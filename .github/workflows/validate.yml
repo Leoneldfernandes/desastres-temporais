@@ -1,0 +1,49 @@
+name: Validação contínua
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Testes e integridade dos dados
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preparar o Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Executar testes automatizados
+        run: python -m unittest discover -s tests -v
+
+      - name: Verificar sintaxe dos scripts
+        run: python -m py_compile scripts/build_data.py scripts/validate_build.py
+
+      - name: Validar integridade dos dados publicados
+        run: python scripts/validate_build.py --data data --strict-current
+
+      - name: Confirmar que a validação não alterou arquivos
+        run: git diff --exit-code
