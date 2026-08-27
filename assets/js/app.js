@@ -936,6 +936,13 @@ function renderEventDetails(rows) {
       <span class="detail-chip">${formatInteger.format(rows.length)} ${rows.length === 1 ? "registro" : "registros"}</span>
       <span class="detail-chip">${formatInteger.format(totalHuman)} danos humanos</span>
       <span class="detail-chip">${formatCurrency.format(totalLoss)} em prejuízos</span>
+    </div>
+    <div class="detail-legend" aria-label="Legenda dos destaques dos registros">
+      <span class="detail-legend-human">Danos humanos: cor da tipologia</span>
+      <span><i class="detail-legend-swatch financial-low" aria-hidden="true"></i>Até R$ 100 mil</span>
+      <span><i class="detail-legend-swatch financial-moderate" aria-hidden="true"></i>R$ 100 mil a R$ 1 milhão</span>
+      <span><i class="detail-legend-swatch financial-high" aria-hidden="true"></i>R$ 1 milhão a R$ 10 milhões</span>
+      <span><i class="detail-legend-swatch financial-very-high" aria-hidden="true"></i>Acima de R$ 10 milhões</span>
     </div>`;
 
   const cards = rows
