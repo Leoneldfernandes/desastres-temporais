@@ -122,7 +122,6 @@ const dom = Object.fromEntries(
     "lastAtlasCheck",
     "latestAtlasRow",
     "latestAtlasVersion",
-    "updateSourceLink",
     "kpiPeriod",
     "scopePill",
     "kpiEvents",
@@ -400,10 +399,6 @@ function renderUpdateStatus() {
   dom.latestAtlasVersion.textContent = hasAvailableVersion
     ? state.updateStatus.availableVersion
     : "—";
-  dom.updateSourceLink.href =
-    (hasAvailableVersion && state.updateStatus.availableSourceUrl) ||
-    state.manifest.sourceUrl ||
-    "https://atlasdigital.mdr.gov.br/";
 }
 
 function setUpdateStatusPanel(open, restoreFocus = false) {
