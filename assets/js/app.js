@@ -290,11 +290,6 @@ function periodLabel(period, short = false) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function numericPeriodLabel(period) {
-  const [year, month] = String(period).split("-");
-  return `${month}/${year}`;
-}
-
 function isoDateLabel(value) {
   const [year, month, day] = String(value).split("-");
   return `${day}/${month}/${year}`;
@@ -305,6 +300,11 @@ function dateTimeLabel(value, emptyLabel = "Ainda não realizada") {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "Data não informada";
   return dateTimeShort.format(parsed);
+}
+
+function numericPeriodLabel(period) {
+  const [year, month] = String(period).split("-");
+  return `${month}/${year}`;
 }
 
 function humanImpactBand(total) {
