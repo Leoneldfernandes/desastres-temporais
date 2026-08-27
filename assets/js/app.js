@@ -417,6 +417,14 @@ function validateUpdateStatus(payload) {
   if (!payload || payload.schemaVersion !== 1 || !UPDATE_STATES.has(payload.status)) {
     throw new Error("Estado de atualização do Atlas inválido.");
   }
+  const requiresCheckedAt =
+    payload.status === "up-to-date" || payload.status === "update-available";
+  if (requiresCheckedAt && !payload.checkedAt) {
+    throw new Error("A verificação concluída do Atlas não informa quando ocorreu.");
+  }
+  if (payload.checkedAt && Number.isNaN(new Date(payload.checkedAt).getTime())) {
+    throw new Error("Data da verificação do Atlas inválida.");
+  }
   return payload;
 }
 
