@@ -28,6 +28,8 @@ Na primeira abertura, o navegador transfere aproximadamente 3,3 MB de dados comp
 
 O manifesto é revalidado a cada abertura. Sua data de geração (`generatedAt`) é acrescentada aos endereços dos arquivos derivados como versão de cache. Uma nova publicação força o navegador a buscar o conjunto novo, enquanto os acessos seguintes à mesma versão continuam aproveitando o cache.
 
+Os arquivos da interface (`app.css` e `app.js`) também usam uma versão de cache baseada nos 12 primeiros caracteres de seu SHA-256. Um teste automatizado exige que o endereço versionado seja atualizado sempre que o conteúdo desses arquivos mudar. Assim, cada nova interface é baixada uma única vez e as visitas seguintes continuam aproveitando o cache normal do navegador.
+
 ## Funcionalidades
 
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
