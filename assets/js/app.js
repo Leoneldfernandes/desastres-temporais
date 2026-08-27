@@ -95,12 +95,33 @@ const formatCurrency = new Intl.NumberFormat("pt-BR", {
 });
 const monthLong = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const monthShort = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" });
+const dateTimeShort = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
+const UPDATE_STATES = new Set([
+  "awaiting-first-check",
+  "up-to-date",
+  "update-available",
+  "check-failed",
+]);
 
 const dom = Object.fromEntries(
   [
     "ufSelector",
     "dataStatus",
     "dataStatusText",
+    "updateStatusPanel",
+    "closeUpdateStatus",
+    "updatePanelState",
+    "updateStatusMessage",
+    "publishedVersion",
+    "publishedCoverage",
+    "publishedGeneratedAt",
+    "lastAtlasCheck",
+    "latestAtlasRow",
+    "latestAtlasVersion",
     "kpiPeriod",
     "scopePill",
     "kpiEvents",
@@ -148,6 +169,7 @@ const state = {
   ready: false,
   manifest: null,
   dataVersion: null,
+  updateStatus: null,
   periods: [],
   types: [],
   summaryByPeriod: [],
@@ -270,6 +292,18 @@ function isoDateLabel(value) {
   return `${day}/${month}/${year}`;
 }
 
+function dateTimeLabel(value, emptyLabel = "Ainda não realizada") {
+  if (!value) return emptyLabel;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Data não informada";
+  return dateTimeShort.format(parsed);
+}
+
+function numericPeriodLabel(period) {
+  const [year, month] = String(period).split("-");
+  return `${month}/${year}`;
+}
+
 function humanImpactBand(total) {
   if (total >= 10_000) return 4;
   if (total >= 1_000) return 3;
@@ -304,6 +338,105 @@ async function fetchJson(url, cache = "default") {
 function setStatus(kind, text) {
   dom.dataStatus.className = `status-badge is-${kind}`;
   dom.dataStatusText.textContent = text;
+}
+
+function updateStatusView(status) {
+  switch (status?.status) {
+    case "up-to-date":
+      return {
+        kind: "ready",
+        label: "Atlas verificado",
+        panelLabel: "Base em dia",
+        message: "Nenhuma versão mais recente do Atlas foi encontrada na última verificação.",
+      };
+    case "update-available":
+      return {
+        kind: "update",
+        label: "Atualização disponível",
+        panelLabel: "Revisão necessária",
+        message:
+          "Uma nova versão do Atlas foi encontrada. A base exibida permanece inalterada até a aprovação da atualização.",
+      };
+    case "check-failed":
+      return {
+        kind: "error",
+        label: "Verificação atrasada",
+        panelLabel: "Não foi possível verificar",
+        message:
+          "A base publicada continua disponível, mas a consulta mais recente ao Atlas não foi concluída.",
+      };
+    default:
+      return {
+        kind: "waiting",
+        label: "Verificação pendente",
+        panelLabel: "Aguardando primeira verificação",
+        message:
+          "A base publicada está disponível. A verificação automática semanal será ativada na próxima etapa.",
+      };
+  }
+}
+
+function renderUpdateStatus() {
+  if (!state.manifest || !state.updateStatus) return;
+  const view = updateStatusView(state.updateStatus);
+  setStatus(view.kind, view.label);
+  dom.updatePanelState.className = `update-state-chip is-${view.kind}`;
+  dom.updatePanelState.textContent = view.panelLabel;
+  dom.updateStatusMessage.textContent = view.message;
+  dom.publishedVersion.textContent = state.manifest.version;
+  dom.publishedCoverage.textContent = `${numericPeriodLabel(
+    state.periods[0]
+  )} a ${numericPeriodLabel(state.periods.at(-1))}`;
+  dom.publishedGeneratedAt.textContent = dateTimeLabel(
+    state.manifest.generatedAt,
+    "Não informada"
+  );
+  dom.lastAtlasCheck.textContent = dateTimeLabel(state.updateStatus.checkedAt);
+
+  const hasAvailableVersion =
+    state.updateStatus.status === "update-available" && state.updateStatus.availableVersion;
+  dom.latestAtlasRow.classList.toggle("is-hidden", !hasAvailableVersion);
+  dom.latestAtlasVersion.textContent = hasAvailableVersion
+    ? state.updateStatus.availableVersion
+    : "—";
+}
+
+function setUpdateStatusPanel(open, restoreFocus = false) {
+  if (open && dom.dataStatus.disabled) return;
+  dom.updateStatusPanel.classList.toggle("is-hidden", !open);
+  dom.dataStatus.setAttribute("aria-expanded", String(open));
+  if (!open && restoreFocus) dom.dataStatus.focus();
+}
+
+function validateUpdateStatus(payload) {
+  if (!payload || payload.schemaVersion !== 1 || !UPDATE_STATES.has(payload.status)) {
+    throw new Error("Estado de atualização do Atlas inválido.");
+  }
+  const requiresCheckedAt =
+    payload.status === "up-to-date" || payload.status === "update-available";
+  if (requiresCheckedAt && !payload.checkedAt) {
+    throw new Error("A verificação concluída do Atlas não informa quando ocorreu.");
+  }
+  if (payload.checkedAt && Number.isNaN(new Date(payload.checkedAt).getTime())) {
+    throw new Error("Data da verificação do Atlas inválida.");
+  }
+  return payload;
+}
+
+async function loadUpdateStatus() {
+  try {
+    return validateUpdateStatus(await fetchJson("data/update-status.json", "no-cache"));
+  } catch (error) {
+    console.warn(error);
+    return {
+      schemaVersion: 1,
+      status: "check-failed",
+      checkedAt: null,
+      availableVersion: null,
+      availableSourceUrl: null,
+      detectedAt: null,
+    };
+  }
 }
 
 function showFatalError(error) {
@@ -882,6 +1015,7 @@ function geometryFileUrl(uf) {
 async function changeScope(nextUf) {
   if (!state.ready || nextUf === state.scopeUF) return;
   const previousUf = state.scopeUF;
+  setUpdateStatusPanel(false);
   addPlaybackBlock("scope");
   dom.ufSelector.disabled = true;
   setStatus("loading", `Carregando ${UF_NAMES[nextUf]}`);
@@ -896,7 +1030,7 @@ async function changeScope(nextUf) {
     renderGeography(geometry, true);
     dom.scopePill.textContent = UF_NAMES[nextUf];
     setPeriod(state.currentPeriod);
-    setStatus("ready", `${state.manifest.version}`);
+    renderUpdateStatus();
   } catch (error) {
     console.error(error);
     dom.ufSelector.value = previousUf;
@@ -926,6 +1060,18 @@ function handleTypeChange() {
 
 function bindEvents() {
   dom.retryButton.addEventListener("click", () => window.location.reload());
+  dom.dataStatus.addEventListener("click", () => {
+    setUpdateStatusPanel(dom.dataStatus.getAttribute("aria-expanded") !== "true");
+  });
+  dom.closeUpdateStatus.addEventListener("click", () => setUpdateStatusPanel(false, true));
+  document.addEventListener("click", (event) => {
+    if (
+      dom.dataStatus.getAttribute("aria-expanded") === "true" &&
+      !event.target.closest(".update-status-wrap")
+    ) {
+      setUpdateStatusPanel(false);
+    }
+  });
   dom.ufSelector.addEventListener("change", (event) => changeScope(event.target.value));
   dom.typeList.addEventListener("change", handleTypeChange);
   dom.selectAllTypes.addEventListener("click", () => setAllTypes(true));
@@ -951,6 +1097,9 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (dom.dataStatus.getAttribute("aria-expanded") === "true") {
+        setUpdateStatusPanel(false, true);
+      }
       closeDetail();
       return;
     }
@@ -989,7 +1138,10 @@ function bindEvents() {
 async function initialize() {
   bindEvents();
   try {
-    const manifest = await fetchJson("data/manifest.json", "no-cache");
+    const [manifest, updateStatus] = await Promise.all([
+      fetchJson("data/manifest.json", "no-cache"),
+      loadUpdateStatus(),
+    ]);
     state.dataVersion = String(manifest.generatedAt || "").trim();
     if (!state.dataVersion) throw new Error("Manifesto sem identificação de geração.");
     const [summary, geometry] = await Promise.all([
@@ -998,6 +1150,7 @@ async function initialize() {
     ]);
     validatePayloads(manifest, summary, geometry);
     indexData(manifest, summary, geometry);
+    state.updateStatus = updateStatus;
     buildUfSelector();
     buildTypeFilters();
     renderGeography(geometry, true);
@@ -1007,7 +1160,8 @@ async function initialize() {
     dom.maxPeriod.textContent = periodLabel(state.periods.at(-1), true);
     state.ready = true;
     setPeriod(0);
-    setStatus("ready", manifest.version);
+    renderUpdateStatus();
+    dom.dataStatus.disabled = false;
 
     requestAnimationFrame(() => {
       map.invalidateSize({ animate: false });

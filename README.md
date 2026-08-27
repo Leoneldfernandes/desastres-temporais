@@ -19,6 +19,7 @@ O CSV bruto do Atlas **não deve ser publicado nem lido pelo navegador**. A vers
 O repositório publica arquivos derivados e compactos:
 
 - `data/atlas-summary.json.gz`: resumo mensal usado pelo mapa, KPIs e tabela;
+- `data/update-status.json`: estado da verificação de novas versões do Atlas;
 - `data/geo/municipios-br.geojson.gz`: malha simplificada das 5.573 feições territoriais, carregada na abertura;
 - `data/geo/uf/*.json.gz`: malhas estaduais mais detalhadas, carregadas somente ao escolher uma UF;
 - `data/events/*.json.gz`: registros completos separados por UF, carregados somente ao clicar em um município.
@@ -30,6 +31,7 @@ O manifesto é revalidado a cada abertura. Sua data de geração (`generatedAt`)
 ## Funcionalidades
 
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
+- indicador clicável no topo com versão, período, geração e estado da verificação do Atlas;
 - 420 meses contínuos, inclusive os meses sem registros;
 - filtro territorial Brasil/UF;
 - 16 tipologias oficiais, cada uma com cor fixa;
