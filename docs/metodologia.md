@@ -143,11 +143,13 @@ Antes da troca dos arquivos publicados, `scripts/build_data.py` verifica:
 - protocolo presente e não duplicado;
 - UF válida;
 - código territorial com sete algarismos e prefixo compatível com a UF;
-- consistência de nome e UF para cada código;
+- consistência de UF para cada código e auditoria das variantes textuais de nome;
 - tipologia pertencente à lista oficial;
 - datas válidas ou recuperáveis;
 - danos humanos inteiros e não negativos;
 - prejuízos numéricos, finitos e não negativos.
+
+O código IBGE é a identidade territorial usada nas junções. Quando a fonte apresenta grafias diferentes do nome para o mesmo código e a mesma UF, o registro é preservado, a variação gera aviso e o nome exibido continua vindo da malha oficial do IBGE. Divergências de UF, código ou demais campos obrigatórios permanecem como erro.
 
 Qualquer erro impede a publicação. Os artefatos novos são preparados em diretório temporário e só substituem os anteriores depois da validação completa; se a troca falhar, os arquivos anteriores são restaurados. Avisos preservam o dado e tornam a exceção auditável.
 

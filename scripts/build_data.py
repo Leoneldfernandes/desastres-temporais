@@ -511,16 +511,30 @@ def validate_identity(
         valid = False
 
     known = municipality_names.get(code)
-    if known is not None and known != (name, uf):
-        report.error(
-            "inconsistent_municipality",
-            "O mesmo código IBGE aparece com nome ou UF divergente.",
-            row=row_number,
-            protocol=protocol,
-            field_name="Cod_IBGE_Mun",
-            value=code,
-        )
-        valid = False
+    if known is not None:
+        known_name, known_uf = known
+        if known_uf != uf:
+            report.error(
+                "inconsistent_municipality_uf",
+                "O mesmo código IBGE aparece associado a UFs diferentes.",
+                row=row_number,
+                protocol=protocol,
+                field_name="Cod_IBGE_Mun",
+                value=code,
+            )
+            valid = False
+        elif known_name != name:
+            report.warning(
+                "municipality_name_variant",
+                (
+                    "O nome municipal varia na fonte para o mesmo código IBGE; "
+                    "o código permanece como identificador e o mapa usa o nome da malha."
+                ),
+                row=row_number,
+                protocol=protocol,
+                field_name="Nome_Municipio",
+                value=f"{known_name} | {name}",
+            )
     elif code and name and uf:
         municipality_names[code] = (name, uf)
 

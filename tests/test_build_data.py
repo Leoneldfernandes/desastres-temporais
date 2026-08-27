@@ -171,6 +171,24 @@ class BuildDataTests(unittest.TestCase):
             )
         )
 
+    def test_name_variant_for_same_ibge_code_is_audited_as_warning(self) -> None:
+        rows = self.valid_rows()
+        rows[1]["Nome_Municipio"] = "Florianopolis"
+        self.write_rows(rows)
+
+        result = build_data.build(self.args())
+
+        self.assertEqual(result["events"], len(build_data.TYPE_COLORS))
+        report = json.loads(self.report.read_text(encoding="utf-8"))
+        self.assertEqual(report["status"], "ok")
+        self.assertTrue(
+            any(
+                issue["code"] == "municipality_name_variant"
+                and issue["severity"] == "warning"
+                for issue in report["issues"]
+            )
+        )
+
     def test_duplicate_protocol_and_uf_mismatch_are_rejected(self) -> None:
         rows = self.valid_rows()
         rows[1]["Protocolo_S2iD"] = rows[0]["Protocolo_S2iD"]
