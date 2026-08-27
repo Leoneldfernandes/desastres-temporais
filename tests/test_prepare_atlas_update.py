@@ -10,6 +10,7 @@ from scripts.prepare_atlas_update import (
     compare_releases,
     release_metadata,
     report_markdown,
+    write_release_records,
 )
 from scripts.check_atlas_update import parse_release_url
 from scripts.sync_release_metadata import (
@@ -164,8 +165,47 @@ class PrepareAtlasUpdateTests(unittest.TestCase):
         self.assertEqual(report["status"], "approved")
         self.assertEqual(report["changes"]["addedRecords"], 1)
         self.assertEqual(report["changes"]["correctedRecords"], 1)
+        correction = report["changes"]["damageCorrections"][0]
+        self.assertEqual(correction["protocol"], "P1")
+        self.assertEqual(correction["uf"], "SC")
+        self.assertEqual(correction["municipalityCode"], "4205407")
+        self.assertEqual(
+            correction["fields"]["humanTotal"],
+            {"current": 10, "candidate": 8, "delta": -2},
+        )
         self.assertEqual(report["errors"], [])
-        self.assertIn("Aprovada para revisão", report_markdown(report))
+        text = report_markdown(report)
+        self.assertIn("Aprovada para revisão", text)
+        self.assertIn("Correções detalhadas por protocolo", text)
+        self.assertIn("| P1 | SC | 4205407 |", text)
+        self.assertIn("| Danos humanos | 10 | 8 | -2 |", text)
+
+        json_path, markdown_path = write_release_records(
+            self.root / "releases", report
+        )
+        self.assertTrue(json_path.is_file())
+        self.assertTrue(markdown_path.is_file())
+        self.assertIn("| P1 | SC | 4205407 |", markdown_path.read_text())
+
+    def test_all_protocol_corrections_are_preserved_in_permanent_report(self) -> None:
+        current_rows = [self.event(f"P{index}", human_total=10) for index in range(105)]
+        candidate_rows = [self.event(f"P{index}", human_total=9) for index in range(105)]
+        self.write_data(self.current, source_url=CURRENT_URL, rows=current_rows)
+        self.write_data(self.candidate, source_url=NEW_URL, rows=candidate_rows)
+
+        report = compare_releases(self.current, self.candidate)
+
+        self.assertEqual(len(report["changes"]["damageCorrections"]), 105)
+        full_text = report_markdown(report)
+        self.assertIn("| P104 | SC | 4205407 |", full_text)
+        summary_text = report_markdown(
+            report,
+            detail_limit=50,
+            complete_report_path="docs/releases/relatorio.md",
+        )
+        self.assertNotIn("| P99 | SC | 4205407 |", summary_text)
+        self.assertIn("omite 160 linha(s)", summary_text)
+        self.assertIn("docs/releases/relatorio.md", summary_text)
 
     def test_missing_published_protocol_stops_the_update(self) -> None:
         self.write_data(

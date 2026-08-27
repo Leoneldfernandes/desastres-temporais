@@ -39,7 +39,30 @@ DAMAGE_FIELDS = (
     "publicLoss",
     "privateLoss",
 )
-MAX_REPORTED_CHANGES = 100
+MAX_PR_DETAIL_ROWS = 50
+
+DAMAGE_LABELS = {
+    "humanTotal": "Danos humanos",
+    "deaths": "Mortos",
+    "injured": "Feridos",
+    "sick": "Enfermos",
+    "homeless": "Desabrigados",
+    "displaced": "Desalojados",
+    "missing": "Desaparecidos",
+    "droughtAffected": "Afetados por seca e estiagem",
+    "otherAffected": "Outros afetados",
+    "publicLoss": "Prejuízos públicos (R$)",
+    "privateLoss": "Prejuízos privados (R$)",
+}
+
+IDENTITY_LABELS = {
+    "period": "Mês de referência",
+    "municipalityCode": "Código territorial",
+    "type": "Tipologia",
+    "eventDate": "Data do evento",
+    "registrationDate": "Data de registro",
+    "uf": "UF",
+}
 
 
 class AtlasPreparationError(RuntimeError):
@@ -344,6 +367,7 @@ def compare_releases(
     identity_change_count = 0
     corrected_records = 0
     corrected_fields = Counter[str]()
+    damage_corrections: list[dict[str, object]] = []
     for protocol in sorted(set(current_records) & set(candidate_records)):
         current = current_records[protocol]
         candidate = candidate_records[protocol]
@@ -362,20 +386,41 @@ def compare_releases(
             }
         if changed_identity:
             identity_change_count += 1
-            if len(identity_changes) < MAX_REPORTED_CHANGES:
-                identity_changes.append(
-                    {"protocol": protocol, "fields": changed_identity}
-                )
+            identity_changes.append(
+                {
+                    "protocol": protocol,
+                    "uf": current.uf,
+                    "municipalityCode": current.municipality_code,
+                    "disasterType": current.disaster_type,
+                    "fields": changed_identity,
+                }
+            )
             continue
 
-        changed_damage_fields = [
-            field
+        changed_damage_fields = {
+            field: {
+                "current": numeric_json(current.damages[field]),
+                "candidate": numeric_json(candidate.damages[field]),
+                "delta": numeric_json(
+                    candidate.damages[field] - current.damages[field]
+                ),
+            }
             for field in DAMAGE_FIELDS
             if current.damages[field] != candidate.damages[field]
-        ]
+        }
         if changed_damage_fields:
             corrected_records += 1
-            corrected_fields.update(changed_damage_fields)
+            corrected_fields.update(changed_damage_fields.keys())
+            damage_corrections.append(
+                {
+                    "protocol": protocol,
+                    "uf": current.uf,
+                    "municipalityCode": current.municipality_code,
+                    "disasterType": current.disaster_type,
+                    "eventDate": current.event_date,
+                    "fields": changed_damage_fields,
+                }
+            )
 
     if identity_change_count:
         errors.append(
@@ -408,7 +453,7 @@ def compare_releases(
     status = "rejected" if errors else ("unchanged" if unchanged_source else "approved")
     metadata = release_metadata(candidate_release)
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "status": status,
         "current": {
             "version": current_manifest.get("version"),
@@ -429,13 +474,14 @@ def compare_releases(
         },
         "changes": {
             "addedRecords": len(added_protocols),
-            "addedProtocolExamples": added_protocols[:MAX_REPORTED_CHANGES],
+            "addedProtocols": added_protocols,
             "removedRecords": len(removed_protocols),
-            "removedProtocolExamples": removed_protocols[:MAX_REPORTED_CHANGES],
+            "removedProtocols": removed_protocols,
             "identityChanges": identity_change_count,
-            "identityChangeExamples": identity_changes,
+            "identityChangeDetails": identity_changes,
             "correctedRecords": corrected_records,
             "correctedFields": dict(sorted(corrected_fields.items())),
+            "damageCorrections": damage_corrections,
             "eventsByUf": delta_table(
                 count_by(current_records, "uf"), count_by(candidate_records, "uf")
             ),
@@ -466,7 +512,25 @@ def format_number(value: object) -> str:
     return formatted.replace(",", "_").replace(".", ",").replace("_", ".")
 
 
-def report_markdown(report: dict[str, object]) -> str:
+def markdown_cell(value: object) -> str:
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def limited_rows(
+    rows: list[tuple[object, ...]], detail_limit: int | None
+) -> tuple[list[tuple[object, ...]], int]:
+    if detail_limit is None:
+        return rows, 0
+    displayed = rows[:detail_limit]
+    return displayed, len(rows) - len(displayed)
+
+
+def report_markdown(
+    report: dict[str, object],
+    *,
+    detail_limit: int | None = None,
+    complete_report_path: str | None = None,
+) -> str:
     current = report["current"]
     candidate = report["candidate"]
     changes = report["changes"]
@@ -511,13 +575,8 @@ def report_markdown(report: dict[str, object]) -> str:
             "|---|---:|---:|---:|",
         ]
     )
-    damage_labels = {
-        "humanTotal": "Danos humanos",
-        "deaths": "Mortos",
-        "publicLoss": "Prejuízos públicos (R$)",
-        "privateLoss": "Prejuízos privados (R$)",
-    }
-    for field, label in damage_labels.items():
+    for field in ("humanTotal", "deaths", "publicLoss", "privateLoss"):
+        label = DAMAGE_LABELS[field]
         values = changes["damageTotals"][field]
         lines.append(
             f"| {label} | {format_number(values['current'])} | "
@@ -552,12 +611,117 @@ def report_markdown(report: dict[str, object]) -> str:
         lines.append("")
 
     if changes["correctedFields"]:
-        lines.extend(["### Campos corrigidos em registros existentes", ""])
+        lines.extend(["### Síntese dos campos corrigidos", ""])
         lines.extend(
-            f"- **{field}:** {format_integer(count)} registro(s)"
+            f"- **{DAMAGE_LABELS[field]} (`{field}`):** "
+            f"{format_integer(count)} registro(s)"
             for field, count in changes["correctedFields"].items()
         )
         lines.append("")
+
+    correction_rows = [
+        (
+            correction["protocol"],
+            correction["uf"],
+            correction["municipalityCode"],
+            correction["disasterType"],
+            correction["eventDate"],
+            DAMAGE_LABELS[field],
+            values["current"],
+            values["candidate"],
+            values["delta"],
+        )
+        for correction in changes["damageCorrections"]
+        for field, values in correction["fields"].items()
+    ]
+    if correction_rows:
+        displayed, omitted = limited_rows(correction_rows, detail_limit)
+        lines.extend(
+            [
+                "### Correções detalhadas por protocolo",
+                "",
+                (
+                    "Cada linha abaixo corresponde a um campo alterado em um protocolo "
+                    "já publicado. A diferença é calculada como candidato menos publicado."
+                ),
+                "",
+                "| Protocolo | UF | Código territorial | Tipologia | Data do evento | Campo | Publicado | Candidato | Diferença |",
+                "|---|---|---|---|---|---|---:|---:|---:|",
+            ]
+        )
+        lines.extend(
+            "| "
+            + " | ".join(
+                [
+                    *(markdown_cell(value) for value in row[:6]),
+                    *(format_number(value) for value in row[6:]),
+                ]
+            )
+            + " |"
+            for row in displayed
+        )
+        lines.append("")
+        if omitted:
+            lines.append(
+                f"_O texto resumido omite {format_integer(omitted)} linha(s) de detalhe para respeitar o limite do Pull Request._"
+            )
+            lines.append("")
+
+    removed_rows = [(protocol,) for protocol in changes["removedProtocols"]]
+    if removed_rows:
+        displayed, omitted = limited_rows(removed_rows, detail_limit)
+        lines.extend(["### Protocolos removidos", ""])
+        lines.extend(f"- `{markdown_cell(row[0])}`" for row in displayed)
+        if omitted:
+            lines.append(
+                f"- _Mais {format_integer(omitted)} protocolo(s) constam no relatório completo._"
+            )
+        lines.append("")
+
+    identity_rows = [
+        (
+            change["protocol"],
+            IDENTITY_LABELS[field],
+            values["current"],
+            values["candidate"],
+        )
+        for change in changes["identityChangeDetails"]
+        for field, values in change["fields"].items()
+    ]
+    if identity_rows:
+        displayed, omitted = limited_rows(identity_rows, detail_limit)
+        lines.extend(
+            [
+                "### Mudanças de identidade rejeitadas",
+                "",
+                "| Protocolo | Campo | Publicado | Candidato |",
+                "|---|---|---|---|",
+            ]
+        )
+        lines.extend(
+            "| " + " | ".join(markdown_cell(value) for value in row) + " |"
+            for row in displayed
+        )
+        if omitted:
+            lines.append("")
+            lines.append(
+                f"_Mais {format_integer(omitted)} alteração(ões) consta(m) no relatório completo._"
+            )
+        lines.append("")
+
+    if complete_report_path:
+        lines.extend(
+            [
+                "### Relatório permanente",
+                "",
+                (
+                    "O detalhamento integral, sem cortes, foi incluído neste Pull Request "
+                    f"em `{complete_report_path}`. A versão estruturada para auditoria "
+                    "computacional está no arquivo JSON de mesmo nome."
+                ),
+                "",
+            ]
+        )
 
     if report["errors"]:
         lines.extend(["### Inconsistências", ""])
@@ -578,9 +742,37 @@ def report_markdown(report: dict[str, object]) -> str:
                 "de revisão e incorporação manual."
             ),
             "",
+            "### Etapas executadas",
+            "",
+            "1. consulta da página oficial e identificação do CSV consolidado;",
+            "2. validação do domínio, do nome, da versão e da data do arquivo;",
+            "3. download temporário com limite de tamanho e cálculo do SHA-256;",
+            "4. leitura e validação das linhas da fonte;",
+            "5. reconstrução dos arquivos derivados sem alterar a publicação vigente;",
+            "6. validação cruzada dos períodos, tipologias, UFs, feições e contagens;",
+            "7. comparação de todos os protocolos com a versão publicada;",
+            "8. geração deste texto e do relatório JSON auditável;",
+            "9. criação de branch e Pull Request somente se todas as regras forem aprovadas;",
+            "10. execução dos testes obrigatórios e espera pela incorporação manual.",
+            "",
         ]
     )
     return "\n".join(lines)
+
+
+def write_release_records(
+    directory: Path, report: dict[str, object]
+) -> tuple[Path, Path]:
+    slug = str(report["candidate"]["slug"])
+    json_path = directory / f"atlas-{slug}.json"
+    markdown_path = directory / f"atlas-{slug}.md"
+    write_json(json_path, report)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.write_text(
+        report_markdown(report) + "\n",
+        encoding="utf-8",
+    )
+    return json_path, markdown_path
 
 
 def fail(message: str) -> NoReturn:
@@ -628,13 +820,18 @@ def main() -> int:
             build_report_path=args.build_report,
         )
         write_json(args.report_json, report)
-        markdown = report_markdown(report)
+        complete_report_path: str | None = None
+        if args.release_record_dir and report["status"] == "approved":
+            _, markdown_path = write_release_records(args.release_record_dir, report)
+            complete_report_path = markdown_path.as_posix()
+        markdown = report_markdown(
+            report,
+            detail_limit=(MAX_PR_DETAIL_ROWS if complete_report_path else None),
+            complete_report_path=complete_report_path,
+        )
         if args.report_markdown:
             args.report_markdown.parent.mkdir(parents=True, exist_ok=True)
             args.report_markdown.write_text(markdown, encoding="utf-8")
-        if args.release_record_dir and report["status"] == "approved":
-            slug = str(report["candidate"]["slug"])
-            write_json(args.release_record_dir / f"atlas-{slug}.json", report)
         print(json.dumps({"status": report["status"]}, ensure_ascii=False))
         return 1 if report["status"] == "rejected" else 0
     except Exception as error:

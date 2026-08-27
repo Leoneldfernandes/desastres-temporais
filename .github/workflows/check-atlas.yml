@@ -360,7 +360,8 @@ jobs:
             data/manifest.json \
             data/atlas-summary.json.gz \
             data/events \
-            "docs/releases/atlas-$SLUG.json"
+            "docs/releases/atlas-$SLUG.json" \
+            "docs/releases/atlas-$SLUG.md"
 
       - name: Guardar relatório e pacote para o próximo job
         if: always() && steps.guard.outputs.skip == 'false'

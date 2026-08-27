@@ -63,10 +63,13 @@ jobs:
           python -m scripts.prepare_atlas_update compare \
             --current-data /tmp/atlas-base/data \
             --candidate-data data \
-            --report-json /tmp/transition-report.json
+            --report-json /tmp/transition-report.json \
+            --release-record-dir docs/releases
 
       - name: Confirmar documentação sincronizada
         run: python scripts/sync_release_metadata.py --data data --readme README.md
 
       - name: Confirmar que a validação não alterou arquivos
-        run: git diff --exit-code
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"

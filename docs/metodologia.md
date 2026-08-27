@@ -157,7 +157,24 @@ O relatório JSON informa estado da execução, SHA-256 da fonte, linhas lidas e
 
 Depois da construção, `scripts/validate_build.py` confere a integridade cruzada dos artefatos: sequência mensal, correspondência entre o período e o nome do CSV oficial, formato das linhas, índices de mês e tipologia, unicidade das 5.573 feições, presença de todos os códigos com eventos na geometria, 27 arquivos de eventos e 27 malhas estaduais, contagens por UF e data de geração válida. O argumento histórico `--strict-current` é mantido por compatibilidade, mas as invariantes científicas são sempre aplicadas.
 
-Para uma atualização, `scripts/prepare_atlas_update.py` também compara os protocolos da versão candidata com os já publicados. A preparação é interrompida se um protocolo desaparecer ou mudar de município, UF, tipologia, data do evento ou data de registro. Alterações para mais ou para menos nos campos de danos humanos e prejuízos são permitidas, porque podem representar correções oficiais, mas sua quantidade e seus efeitos nos totais ficam registrados no relatório do pull request.
+Para uma atualização, `scripts/prepare_atlas_update.py` também compara os protocolos da versão candidata com os já publicados. A preparação é interrompida se um protocolo desaparecer ou mudar de município, UF, tipologia, data do evento ou data de registro. Alterações para mais ou para menos nos campos de danos humanos e prejuízos são permitidas, porque podem representar correções oficiais. Cada campo corrigido fica associado ao protocolo, UF, código territorial, tipologia e data do evento, com valor publicado, valor candidato e diferença. A relação completa é preservada sem corte no relatório permanente; a descrição do pull request pode apresentar somente uma síntese para respeitar seu limite de tamanho.
+
+### 8.1. Etapas da atualização automática
+
+1. O GitHub consulta a página oficial de downloads na segunda-feira às 8h, no fuso `America/Sao_Paulo`.
+2. O endereço encontrado é aceito somente quando usa HTTPS, pertence exatamente ao domínio oficial e apresenta pasta, período, versão e data no padrão auditável.
+3. O estado da consulta é gravado na branch técnica `atlas-status`. Essa etapa pode alterar o aviso do site, mas não os dados do mapa.
+4. Quando existe uma versão posterior, o processo verifica se já há branch ou pull request aberto para ela. A repetição é interrompida para evitar duplicatas.
+5. O CSV é baixado em diretório temporário, com limite de 500 MB, conferência de redirecionamento e cálculo do SHA-256. O arquivo bruto não é publicado nem incluído nos artefatos.
+6. A fonte é lida linha por linha. Colunas, protocolos, UFs, códigos, tipologias, datas, danos humanos e prejuízos passam pelas regras descritas nesta metodologia.
+7. Os arquivos derivados são construídos fora do diretório publicado. Em seguida, são conferidos a série mensal, as 16 tipologias, as 27 UFs, as 5.573 feições, os índices e todas as contagens internas.
+8. Cada protocolo candidato é comparado ao correspondente publicado. Remoções e mudanças de identidade interrompem a atualização; inclusões e correções quantitativas permitidas são registradas.
+9. O processo gera um relatório JSON completo e um relatório Markdown legível. Para cada correção quantitativa, ambos registram protocolo, território, tipologia, campo, valor anterior, valor novo e diferença. Também registram fonte, SHA-256, avisos, inclusões e variações agregadas.
+10. Somente após aprovação de todas as verificações os arquivos derivados e os relatórios são empacotados. O job que realiza a leitura não possui permissão de escrita no repositório.
+11. Um job final, isolado e com permissão restrita, cria uma branch determinística, envia os arquivos aprovados e abre o pull request. Ele não contém comando para aprovar ou incorporar.
+12. A validação contínua é iniciada explicitamente na nova branch. Ela regenera os relatórios permanente e textual e falha se estiverem ausentes ou diferentes do resultado calculado. A proteção da `main` exige os testes, e a publicação depende da revisão e da incorporação manual do pull request.
+
+Se qualquer etapa falhar, a branch `main` e os dados públicos permanecem inalterados. Os relatórios disponíveis até o ponto da falha são mantidos por 30 dias no GitHub Actions. Uma nova execução semanal pode tentar novamente, desde que não exista branch ou pull request conflitante.
 
 A mesma verificação é executada automaticamente em todo pull request destinado à branch `main` e em todo envio à própria `main`. O check obrigatório chama-se **Testes e integridade dos dados**.
 
@@ -170,6 +187,8 @@ A mesma verificação é executada automaticamente em todo pull request destinad
 | `data/events/<UF>.json.gz` | registros individuais separados por UF |
 | `data/geo/municipios-br.geojson.gz` | malha nacional simplificada |
 | `data/geo/uf/<UF>.json.gz` | malhas estaduais com maior detalhe |
+| `docs/releases/atlas-<versão>.json` | relatório permanente completo para auditoria computacional |
+| `docs/releases/atlas-<versão>.md` | relatório permanente integral em texto legível |
 
 Os JSON compactados usam ordem estável e gzip com data interna fixada em zero, o que favorece a reprodução de arquivos idênticos a partir das mesmas entradas e do mesmo código.
 
@@ -192,7 +211,7 @@ python3 scripts/validate_build.py --data data
 python3 -m unittest discover -s tests -v
 ```
 
-Cada versão aprovada gera um relatório em `docs/releases/`, contendo fonte, SHA-256, protocolos acrescentados, correções, diferenças por UF e tipologia e variações nos totais de danos e prejuízos.
+Cada versão aprovada gera dois relatórios em `docs/releases/`: JSON estruturado e Markdown em texto legível. Ambos contêm fonte, SHA-256, protocolos acrescentados, correções detalhadas por protocolo, diferenças por UF e tipologia e variações nos totais de danos e prejuízos.
 
 Para citar um resultado reproduzido, recomenda-se registrar conjuntamente: versão e data do Atlas, SHA-256 do CSV, ano da malha do IBGE, commit do repositório e data de acesso.
 

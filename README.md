@@ -44,6 +44,23 @@ Quando uma nova versão é encontrada, outro job baixa o CSV temporariamente no 
 
 Se toda a validação for aprovada, a automação cria uma branch exclusiva e abre um pull request. Execuções posteriores reconhecem o PR já aberto e não criam duplicatas. O CSV bruto é apagado junto com o ambiente temporário; somente os dados derivados, o manifesto e o relatório científico entram no PR. A incorporação permanece obrigatoriamente manual.
 
+O fluxo completo é composto pelas seguintes etapas:
+
+1. consultar a página oficial de downloads e identificar a versão consolidada mais recente;
+2. publicar no site somente o estado da consulta e a data da última verificação;
+3. validar domínio, caminho, nome, versão e data do CSV anunciado;
+4. verificar se já existe branch ou pull request para a mesma versão;
+5. baixar o CSV em ambiente temporário, limitar seu tamanho e calcular o SHA-256;
+6. validar todas as linhas e reconstruir o resumo e os 27 arquivos estaduais;
+7. conferir períodos, tipologias, UFs, contagens e as 5.573 feições territoriais;
+8. comparar todos os protocolos com a versão publicada e interromper diante de remoção ou mudança de identidade;
+9. registrar cada correção de danos ou prejuízos com protocolo, campo, valores anterior e novo e diferença;
+10. gerar um relatório JSON para auditoria computacional e um relatório Markdown em texto legível;
+11. abrir uma branch e um pull request próprios e executar novamente os testes obrigatórios;
+12. aguardar a revisão e a incorporação manual, únicas ações que podem alterar os dados publicados.
+
+Cada atualização aprovada mantém permanentemente os dois relatórios em `docs/releases/`. O texto do pull request apresenta a síntese e aponta o arquivo Markdown integral quando o detalhamento ultrapassa o limite adequado para a descrição do GitHub. Em caso de erro, nenhum dado do site é trocado e os relatórios da tentativa permanecem disponíveis como artefato do GitHub Actions por 30 dias.
+
 ## Funcionalidades
 
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
