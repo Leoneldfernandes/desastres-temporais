@@ -19,6 +19,13 @@ CURRENT_RELEASE = {
     "scEvents": 9_108,
 }
 
+UPDATE_STATES = {
+    "awaiting-first-check",
+    "up-to-date",
+    "update-available",
+    "check-failed",
+}
+
 
 def load(path: Path) -> object:
     if path.suffix == ".gz":
@@ -36,6 +43,22 @@ def next_period(period: str) -> str:
     return f"{year:04d}-{month + 1:02d}"
 
 
+def validate_update_status(data: Path) -> None:
+    payload = load(data / "update-status.json")
+    assert isinstance(payload, dict)
+    assert payload["schemaVersion"] == 1
+    assert payload["status"] in UPDATE_STATES
+
+    checked_at = payload.get("checkedAt")
+    if checked_at is not None:
+        assert date.fromisoformat(str(checked_at)[:10])
+
+    if payload["status"] == "update-available":
+        assert payload.get("availableVersion")
+        assert str(payload.get("availableSourceUrl", "")).startswith("https://")
+        assert date.fromisoformat(str(payload["detectedAt"])[:10])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=Path, default=Path("data"))
@@ -45,6 +68,8 @@ def main() -> None:
         help="Também confere as contagens exatas da base v1.1 de 06/08/2026.",
     )
     args = parser.parse_args()
+
+    validate_update_status(args.data)
 
     manifest = load(args.data / "manifest.json")
     summary = load(args.data / manifest["files"]["summary"].removeprefix("data/"))

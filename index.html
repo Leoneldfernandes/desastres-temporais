@@ -33,9 +33,73 @@
             <option value="BR">Brasil inteiro</option>
           </select>
         </label>
-        <div class="status-badge is-loading" id="dataStatus" role="status" aria-live="polite">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="dataStatusText">Preparando o mapa…</span>
+        <div class="update-status-wrap">
+          <button
+            class="status-badge is-loading"
+            id="dataStatus"
+            type="button"
+            aria-expanded="false"
+            aria-controls="updateStatusPanel"
+            disabled
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="dataStatusText" role="status" aria-live="polite">Preparando o mapa…</span>
+            <span class="status-chevron" aria-hidden="true">⌄</span>
+          </button>
+
+          <section
+            class="update-status-panel is-hidden"
+            id="updateStatusPanel"
+            role="region"
+            aria-labelledby="updateStatusTitle"
+          >
+            <header class="update-status-header">
+              <div>
+                <p class="eyebrow">Transparência dos dados</p>
+                <h2 id="updateStatusTitle">Atualização do Atlas</h2>
+              </div>
+              <button
+                class="update-status-close"
+                id="closeUpdateStatus"
+                type="button"
+                aria-label="Fechar informações de atualização"
+              >×</button>
+            </header>
+
+            <div class="update-status-summary">
+              <span class="update-state-chip" id="updatePanelState">Aguardando verificação</span>
+              <p id="updateStatusMessage">
+                Preparando as informações sobre a base publicada.
+              </p>
+            </div>
+
+            <dl class="update-status-details">
+              <div>
+                <dt>Base em uso</dt>
+                <dd id="publishedVersion">—</dd>
+              </div>
+              <div>
+                <dt>Período coberto</dt>
+                <dd id="publishedCoverage">—</dd>
+              </div>
+              <div>
+                <dt>Geração do site</dt>
+                <dd id="publishedGeneratedAt">—</dd>
+              </div>
+              <div>
+                <dt>Última verificação do Atlas</dt>
+                <dd id="lastAtlasCheck">Ainda não realizada</dd>
+              </div>
+              <div class="is-hidden" id="latestAtlasRow">
+                <dt>Versão encontrada</dt>
+                <dd id="latestAtlasVersion">—</dd>
+              </div>
+            </dl>
+
+            <a id="updateSourceLink" href="https://atlasdigital.mdr.gov.br/" target="_blank" rel="noopener">
+              Abrir a fonte oficial
+            </a>
+          </section>
         </div>
       </div>
     </header>
