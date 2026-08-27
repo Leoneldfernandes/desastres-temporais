@@ -103,6 +103,8 @@ jobs:
           --output /tmp/atlas.csv
 
       - name: Reconstruir os dados sem publicar
+        id: dry_build
+        continue-on-error: true
         env:
           SOURCE_URL: ${{ steps.release.outputs.url }}
           VERSION: ${{ steps.release.outputs.label }}
@@ -117,7 +119,26 @@ jobs:
             --source-url "$SOURCE_URL" \
             --version "$VERSION"
 
+      - name: Exibir o relatório da reconstrução
+        if: always()
+        run: |
+          if [ -f /tmp/build-report.json ]; then
+            python -m json.tool /tmp/build-report.json
+          else
+            echo "O relatório não foi produzido."
+          fi
+
+      - name: Guardar o relatório da simulação
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atlas-dry-run-report
+          path: /tmp/build-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Validar e comparar a reconstrução
+        if: steps.dry_build.outcome == 'success'
         run: |
           python scripts/validate_build.py --data /tmp/atlas-dry-run/data --strict-current
           python -m scripts.prepare_atlas_update compare \
@@ -125,6 +146,10 @@ jobs:
             --candidate-data /tmp/atlas-dry-run/data \
             --build-report /tmp/build-report.json \
             --report-json /tmp/dry-run-report.json
+
+      - name: Sinalizar falha da reconstrução
+        if: steps.dry_build.outcome == 'failure'
+        run: exit 1
 
   publish-status:
     name: Publicar somente o estado da verificação
