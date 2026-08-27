@@ -1030,9 +1030,27 @@ input:focus-visible,
 
 .event-metric {
   padding: 8px;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: rgba(16, 33, 53, 0.7);
 }
+
+.event-metric--human-positive {
+  border-color: color-mix(in srgb, var(--event-color) 58%, transparent);
+  background: color-mix(in srgb, var(--event-color) 24%, rgba(16, 33, 53, 0.7));
+  box-shadow: inset 3px 0 0 var(--event-color);
+}
+
+.event-metric--financial {
+  box-shadow: inset 3px 0 0 var(--financial-color);
+  border-color: color-mix(in srgb, var(--financial-color) 58%, transparent);
+  background: color-mix(in srgb, var(--financial-color) 24%, rgba(16, 33, 53, 0.7));
+}
+
+.event-metric--financial-low { --financial-color: #2979ff; }
+.event-metric--financial-moderate { --financial-color: #00b8d9; }
+.event-metric--financial-high { --financial-color: #f9a825; }
+.event-metric--financial-very-high { --financial-color: #fb8c00; }
 
 .event-metric span {
   display: block;

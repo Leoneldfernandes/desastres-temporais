@@ -896,10 +896,27 @@ async function openMunicipalityDetail(code) {
   }
 }
 
-function detailMetric(label, value, formatter = formatInteger) {
-  return `<div class="event-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(
-    formatter.format(value)
-  )}</strong></div>`;
+function financialImpactBand(value) {
+  if (value <= 100_000) return "low";
+  if (value <= 1_000_000) return "moderate";
+  if (value <= 10_000_000) return "high";
+  return "very-high";
+}
+
+function detailMetric(label, value, { formatter = formatInteger, typeColor = null, financial = false } = {}) {
+  const classes = ["event-metric"];
+  let style = "";
+
+  if (value > 0 && typeColor) {
+    classes.push("event-metric--human-positive");
+    style = ` style="--event-color:${escapeHtml(typeColor)}"`;
+  } else if (value > 0 && financial) {
+    classes.push("event-metric--financial", `event-metric--financial-${financialImpactBand(value)}`);
+  }
+
+  return `<div class="${classes.join(" ")}"${style}><span>${escapeHtml(
+    label
+  )}</span><strong>${escapeHtml(formatter.format(value))}</strong></div>`;
 }
 
 function renderEventDetails(rows) {
@@ -939,17 +956,23 @@ function renderEventDetails(rows) {
             </div>
           </header>
           <div class="event-grid">
-            ${detailMetric("Danos humanos", row[EVENT.human])}
-            ${detailMetric("Mortos", row[EVENT.deaths])}
-            ${detailMetric("Feridos", row[EVENT.injured])}
-            ${detailMetric("Enfermos", row[EVENT.sick])}
-            ${detailMetric("Desabrigados", row[EVENT.homeless])}
-            ${detailMetric("Desalojados", row[EVENT.displaced])}
-            ${detailMetric("Desaparecidos", row[EVENT.missing])}
-            ${detailMetric("Afetados por seca", row[EVENT.drought])}
-            ${detailMetric("Outros afetados", row[EVENT.other])}
-            ${detailMetric("Prejuízo público", row[EVENT.publicLoss], formatCurrency)}
-            ${detailMetric("Prejuízo privado", row[EVENT.privateLoss], formatCurrency)}
+            ${detailMetric("Danos humanos", row[EVENT.human], { typeColor: type.color })}
+            ${detailMetric("Mortos", row[EVENT.deaths], { typeColor: type.color })}
+            ${detailMetric("Feridos", row[EVENT.injured], { typeColor: type.color })}
+            ${detailMetric("Enfermos", row[EVENT.sick], { typeColor: type.color })}
+            ${detailMetric("Desabrigados", row[EVENT.homeless], { typeColor: type.color })}
+            ${detailMetric("Desalojados", row[EVENT.displaced], { typeColor: type.color })}
+            ${detailMetric("Desaparecidos", row[EVENT.missing], { typeColor: type.color })}
+            ${detailMetric("Afetados por seca", row[EVENT.drought], { typeColor: type.color })}
+            ${detailMetric("Outros afetados", row[EVENT.other], { typeColor: type.color })}
+            ${detailMetric("Prejuízo público", row[EVENT.publicLoss], {
+              formatter: formatCurrency,
+              financial: true,
+            })}
+            ${detailMetric("Prejuízo privado", row[EVENT.privateLoss], {
+              formatter: formatCurrency,
+              financial: true,
+            })}
           </div>
         </article>`;
     })
