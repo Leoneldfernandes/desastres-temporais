@@ -143,6 +143,8 @@ const dom = Object.fromEntries(
     "playButton",
     "playIcon",
     "playLabel",
+    "shareView",
+    "shareViewLabel",
     "nextPeriod",
     "speedSelect",
     "minPeriod",
@@ -196,6 +198,8 @@ const state = {
   mapResumeTimer: null,
   tableFrame: null,
   detailSnapshot: null,
+  urlSyncReady: false,
+  shareFeedbackTimer: null,
 };
 
 const mapRenderer = L.canvas({ padding: 0.45, tolerance: 5 });
@@ -305,6 +309,92 @@ function dateTimeLabel(value, emptyLabel = "Ainda não realizada") {
 function numericPeriodLabel(period) {
   const [year, month] = String(period).split("-");
   return `${month}/${year}`;
+}
+
+function viewStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedUf = String(params.get("uf") || "BR").toUpperCase();
+  const uf = Object.hasOwn(UF_NAMES, requestedUf) ? requestedUf : "BR";
+  const requestedPeriod = params.get("mes");
+  const periodIndex = Math.max(0, state.periods.indexOf(requestedPeriod));
+  const allTypes = state.types.map((type) => type.id);
+  const requestedTypes = params.get("tipos");
+  let types = allTypes;
+
+  if (requestedTypes === "nenhum") {
+    types = [];
+  } else if (requestedTypes) {
+    const parsed = requestedTypes.split(",").map((value) => Number(value));
+    const validIds = new Set(allTypes);
+    if (
+      parsed.length &&
+      parsed.every((value) => Number.isInteger(value) && validIds.has(value))
+    ) {
+      types = [...new Set(parsed)];
+    }
+  }
+
+  const requestedMunicipality = String(params.get("municipio") || "");
+  const municipality = state.municipalityByCode.get(requestedMunicipality);
+  const municipalityCode =
+    municipality && (uf === "BR" || municipality.uf === uf) ? requestedMunicipality : null;
+
+  return { uf, periodIndex, types, municipalityCode };
+}
+
+function applyTypeSelection(typeIds) {
+  state.activeTypes = new Set(typeIds);
+  for (const input of dom.typeList.querySelectorAll('input[type="checkbox"]')) {
+    input.checked = state.activeTypes.has(Number(input.value));
+  }
+}
+
+function syncViewUrl() {
+  if (!state.urlSyncReady) return;
+  const url = new URL(window.location.href);
+  const selectedTypes = [...state.activeTypes].sort((a, b) => a - b);
+
+  if (state.scopeUF === "BR") url.searchParams.delete("uf");
+  else url.searchParams.set("uf", state.scopeUF);
+  url.searchParams.set("mes", state.periods[state.currentPeriod]);
+
+  if (selectedTypes.length === state.types.length) {
+    url.searchParams.delete("tipos");
+  } else if (!selectedTypes.length) {
+    url.searchParams.set("tipos", "nenhum");
+  } else {
+    url.searchParams.set("tipos", selectedTypes.join(","));
+  }
+
+  if (state.detailSnapshot?.code) url.searchParams.set("municipio", state.detailSnapshot.code);
+  else url.searchParams.delete("municipio");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+async function shareCurrentView() {
+  syncViewUrl();
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch (error) {
+    const fallback = document.createElement("textarea");
+    fallback.value = url;
+    fallback.setAttribute("readonly", "");
+    fallback.style.position = "fixed";
+    fallback.style.opacity = "0";
+    document.body.append(fallback);
+    fallback.select();
+    document.execCommand("copy");
+    fallback.remove();
+  }
+
+  clearTimeout(state.shareFeedbackTimer);
+  dom.shareView.classList.add("is-copied");
+  dom.shareViewLabel.textContent = "Link copiado";
+  state.shareFeedbackTimer = window.setTimeout(() => {
+    dom.shareView.classList.remove("is-copied");
+    dom.shareViewLabel.textContent = "Compartilhar visualização";
+  }, 2200);
 }
 
 function humanImpactBand(total) {
@@ -781,6 +871,7 @@ function setPeriod(index) {
   if (state.hovered && municipalityTooltip._map) {
     municipalityTooltip.setContent(tooltipContent(state.hovered.code));
   }
+  syncViewUrl();
 }
 
 function tooltipContent(code) {
@@ -876,6 +967,7 @@ async function openMunicipalityDetail(code) {
     : '<div class="modal-empty">Este município não possui ocorrência para os filtros e o mês selecionados.</div>';
   dom.detailModal.classList.remove("is-hidden");
   dom.closeDetail.focus();
+  syncViewUrl();
 
   if (!aggregate) return;
 
@@ -992,6 +1084,7 @@ function closeDetail() {
   if (dom.detailModal.classList.contains("is-hidden")) return;
   dom.detailModal.classList.add("is-hidden");
   state.detailSnapshot = null;
+  syncViewUrl();
   removePlaybackBlock("detail");
   document.getElementById("map").focus({ preventScroll: true });
 }
@@ -1128,6 +1221,7 @@ function bindEvents() {
   dom.clearAllTypes.addEventListener("click", () => setAllTypes(false));
   dom.previousPeriod.addEventListener("click", () => setPeriod(state.currentPeriod - 1));
   dom.nextPeriod.addEventListener("click", () => setPeriod(state.currentPeriod + 1));
+  dom.shareView.addEventListener("click", shareCurrentView);
   dom.playButton.addEventListener("click", togglePlayback);
   dom.speedSelect.addEventListener("change", () => {
     state.playbackSpeed = Number(dom.speedSelect.value);
@@ -1203,15 +1297,32 @@ async function initialize() {
     state.updateStatus = updateStatus;
     buildUfSelector();
     buildTypeFilters();
-    renderGeography(geometry, true);
+    const initialView = viewStateFromUrl();
+    applyTypeSelection(initialView.types);
+
+    let initialGeometry = geometry;
+    if (initialView.uf !== "BR") {
+      initialGeometry = await fetchJson(geometryFileUrl(initialView.uf));
+      state.geometryCache.set(initialView.uf, initialGeometry);
+    }
+    state.scopeUF = initialView.uf;
+    dom.ufSelector.value = initialView.uf;
+    dom.scopePill.textContent = UF_NAMES[initialView.uf];
+    renderGeography(initialGeometry, true);
 
     dom.periodSlider.max = String(state.periods.length - 1);
     dom.minPeriod.textContent = numericPeriodLabel(state.periods[0]);
     dom.maxPeriod.textContent = numericPeriodLabel(state.periods.at(-1));
     state.ready = true;
-    setPeriod(0);
+    setPeriod(initialView.periodIndex);
+    state.urlSyncReady = true;
+    syncViewUrl();
     renderUpdateStatus();
     dom.dataStatus.disabled = false;
+
+    if (initialView.municipalityCode) {
+      await openMunicipalityDetail(initialView.municipalityCode);
+    }
 
     requestAnimationFrame(() => {
       map.invalidateSize({ animate: false });

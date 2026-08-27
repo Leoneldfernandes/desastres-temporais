@@ -721,6 +721,9 @@ input:focus-visible,
 }
 
 .timeline-topline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "period player speed";
   justify-content: space-between;
   gap: 14px;
 }
@@ -734,7 +737,38 @@ input:focus-visible,
   line-height: 1.1;
 }
 
-.player-controls { gap: 7px; }
+.period-share {
+  grid-area: period;
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.player-controls {
+  grid-area: player;
+  gap: 7px;
+}
+
+.share-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.share-view-button:hover {
+  background: rgba(66, 214, 232, 0.08);
+  color: var(--cyan);
+}
+
+.share-view-button.is-copied { color: var(--success); }
 
 .button,
 .icon-button {
@@ -778,6 +812,11 @@ input:focus-visible,
 .speed-field select {
   min-width: 114px;
   height: 32px;
+}
+
+.timeline-topline > .speed-field {
+  grid-area: speed;
+  justify-self: end;
 }
 
 .range-row {
@@ -1207,12 +1246,23 @@ input:focus-visible,
   .timeline-topline {
     display: grid;
     grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "period speed"
+      "player player"
+      "share share";
   }
 
+  .period-share { display: contents; }
+
+  .period-display { grid-area: period; }
+
   .player-controls {
-    grid-column: 1 / -1;
-    grid-row: 2;
     justify-content: center;
+  }
+
+  .share-view-button {
+    grid-area: share;
+    justify-self: center;
   }
 
   .speed-field {
