@@ -153,6 +153,8 @@ class AtlasValidationError(RuntimeError):
 class ValidationReport:
     source: str
     source_sha256: str
+    source_url: str
+    version: str
     started_at: str
     rows_read: int = 0
     rows_accepted: int = 0
@@ -209,6 +211,8 @@ class ValidationReport:
             "status": status,
             "source": self.source,
             "sourceSha256": self.source_sha256,
+            "sourceUrl": self.source_url,
+            "version": self.version,
             "startedAt": self.started_at,
             "finishedAt": now_utc(),
             "rowsRead": self.rows_read,
@@ -233,12 +237,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", default=Path("build-report.json"), type=Path)
     parser.add_argument(
         "--source-url",
-        default=(
-            "https://atlasdigital.mdr.gov.br/arquivos/2026/"
-            "BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.csv"
-        ),
+        required=True,
+        help="Endereço oficial exato do CSV usado na geração.",
     )
-    parser.add_argument("--version", default="v1.1 — 06/08/2026")
+    parser.add_argument(
+        "--version",
+        required=True,
+        help="Versão e data auditáveis, por exemplo: v1.1 — 06/08/2026.",
+    )
     return parser.parse_args()
 
 
@@ -791,6 +797,8 @@ def build(args: argparse.Namespace) -> dict[str, int]:
     report = ValidationReport(
         source=str(args.atlas),
         source_sha256=source_sha256,
+        source_url=args.source_url,
+        version=args.version,
         started_at=now_utc(),
     )
     status = "failed"

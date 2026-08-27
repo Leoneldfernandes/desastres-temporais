@@ -85,6 +85,8 @@ class BuildDataTests(unittest.TestCase):
         report = json.loads(self.report.read_text(encoding="utf-8"))
         self.assertEqual(report["status"], "ok")
         self.assertEqual(report["errors"], 0)
+        self.assertEqual(report["sourceUrl"], self.args().source_url)
+        self.assertEqual(report["version"], self.args().version)
         self.assertEqual(manifest["sourceSha256"], report["sourceSha256"])
 
     def test_invalid_number_stops_build_and_preserves_published_files(self) -> None:

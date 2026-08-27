@@ -69,6 +69,12 @@ class AtlasUpdateCheckTests(unittest.TestCase):
                 "BD_Atlas_1991_2026_v1.0_2027.05.20_Consolidado.csv"
             )
 
+        with self.assertRaises(AtlasCheckError):
+            parse_release_url(f"{CURRENT_URL}?arquivo=outro")
+
+        with self.assertRaises(AtlasCheckError):
+            parse_release_url(CURRENT_URL.replace(".gov.br/", ".gov.br:444/"))
+
         old = parse_release_url(
             "https://atlasdigital.mdr.gov.br/arquivos/2025/"
             "BD_Atlas_1991_2024_v1.0_2025.05.20_Consolidado.csv"

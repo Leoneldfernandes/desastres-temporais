@@ -4,6 +4,7 @@
 
 O projeto visualiza **registros oficiais de desastres**, e não todos os fenômenos físicos que possam ter ocorrido no território brasileiro. A fonte é o Atlas Digital de Desastres no Brasil, mantido pela Secretaria Nacional de Proteção e Defesa Civil do Ministério da Integração e do Desenvolvimento Regional (Sedec/MIDR).
 
+<!-- atlas-methodology-release:start -->
 Esta documentação descreve a versão atualmente publicada:
 
 | Item | Cobertura |
@@ -28,6 +29,7 @@ O CSV bruto não é publicado no repositório. O site usa somente artefatos deri
 - Arquivo processado: `BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.csv`.
 - Endereço registrado no processamento: <https://atlasdigital.mdr.gov.br/arquivos/2026/BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.csv>.
 - Codificação e separador esperados: ISO-8859-1 e ponto e vírgula.
+<!-- atlas-methodology-release:end -->
 
 Segundo o MIDR, os dados do Atlas são originados no Sistema Integrado de Informações sobre Desastres (S2iD) e passam por verificação e padronização institucional antes da publicação. O processamento deste repositório acrescenta validações técnicas, mas não substitui nem refaz a metodologia institucional do Atlas.
 
@@ -57,19 +59,19 @@ Cada linha aceita do CSV é tratada como um registro de desastre e deve possuir 
 
 O **mês de referência** é extraído de `Data_Evento`, interpretada como a data de início do evento. `Data_Registro` é preservada nos detalhes, mas não determina a posição do evento na linha do tempo.
 
-Os 420 meses entre o primeiro e o último período são mantidos em sequência, inclusive quando um mês não possui registros. A ausência de uma linha agregada significa “nenhum registro oficial encontrado para essa combinação”, não a comprovação de que nenhum fenômeno ocorreu.
+Todos os meses entre o primeiro e o último período informado no manifesto são mantidos em sequência, inclusive quando um mês não possui registros. A ausência de uma linha agregada significa “nenhum registro oficial encontrado para essa combinação”, não a comprovação de que nenhum fenômeno ocorreu.
 
 ## 4. Cobertura territorial: por que existem 5.573 feições
 
 O site usa o rótulo público aprovado **“5.573 municípios e unidades equivalentes”**. Para uso científico, sua composição precisa ser explicitada:
 
-| Categoria da Malha Municipal 2025 | Quantidade | Situação na base atual do Atlas |
-| --- | ---: | --- |
-| Municípios | 5.569 | Boa Esperança do Norte (MT), instalado em 2025, está na malha e não possui registro no período publicado |
-| Distrito Federal — Brasília (`5300108`) | 1 | 17 registros |
-| Distrito Estadual de Fernando de Noronha (`2605459`) | 1 | 3 registros |
-| Áreas Estaduais Operacionais — Lagoa Mirim (`4300001`) e Lagoa dos Patos (`4300002`) | 2 | nenhum registro |
-| **Total de feições/geocódigos** | **5.573** | **5.256 códigos têm pelo menos um registro** |
+| Categoria da Malha Municipal 2025 | Quantidade |
+| --- | ---: |
+| Municípios, incluindo Boa Esperança do Norte (MT) | 5.569 |
+| Distrito Federal — Brasília (`5300108`) | 1 |
+| Distrito Estadual de Fernando de Noronha (`2605459`) | 1 |
+| Áreas Estaduais Operacionais — Lagoa Mirim (`4300001`) e Lagoa dos Patos (`4300002`) | 2 |
+| **Total de feições/geocódigos** | **5.573** |
 
 As duas áreas operacionais lacustres não são municípios. Elas são mantidas porque integram a Malha Municipal Digital 2025 distribuída pelo IBGE; sua presença não cria nem imputa desastres. Brasília e Fernando de Noronha também não são municípios juridicamente, mas funcionam como unidades equivalentes em produtos estatísticos e possuem registros na fonte.
 
@@ -151,7 +153,9 @@ Qualquer erro impede a publicação. Os artefatos novos são preparados em diret
 
 O relatório JSON informa estado da execução, SHA-256 da fonte, linhas lidas e aceitas, erros, avisos, células numéricas vazias, datas recuperadas e até 200 ocorrências detalhadas.
 
-Depois da construção, `scripts/validate_build.py` confere a integridade cruzada dos artefatos: sequência mensal, formato das linhas, índices de mês e tipologia, unicidade dos códigos da malha, presença de todos os códigos com eventos na geometria, 27 arquivos de eventos e 27 malhas estaduais, contagens por UF e data de geração válida. No modo `--strict-current`, também confere as contagens exatas desta versão.
+Depois da construção, `scripts/validate_build.py` confere a integridade cruzada dos artefatos: sequência mensal, correspondência entre o período e o nome do CSV oficial, formato das linhas, índices de mês e tipologia, unicidade das 5.573 feições, presença de todos os códigos com eventos na geometria, 27 arquivos de eventos e 27 malhas estaduais, contagens por UF e data de geração válida. O argumento histórico `--strict-current` é mantido por compatibilidade, mas as invariantes científicas são sempre aplicadas.
+
+Para uma atualização, `scripts/prepare_atlas_update.py` também compara os protocolos da versão candidata com os já publicados. A preparação é interrompida se um protocolo desaparecer ou mudar de município, UF, tipologia, data do evento ou data de registro. Alterações para mais ou para menos nos campos de danos humanos e prejuízos são permitidas, porque podem representar correções oficiais, mas sua quantidade e seus efeitos nos totais ficam registrados no relatório do pull request.
 
 A mesma verificação é executada automaticamente em todo pull request destinado à branch `main` e em todo envio à própria `main`. O check obrigatório chama-se **Testes e integridade dos dados**.
 
@@ -186,7 +190,7 @@ python3 scripts/validate_build.py --data data
 python3 -m unittest discover -s tests -v
 ```
 
-`--strict-current` deve ser acrescentado à validação somente quando se espera reproduzir exatamente a versão v1.1 de 06/08/2026. Uma nova edição do Atlas exigirá revisão consciente das contagens de referência.
+Cada versão aprovada gera um relatório em `docs/releases/`, contendo fonte, SHA-256, protocolos acrescentados, correções, diferenças por UF e tipologia e variações nos totais de danos e prejuízos.
 
 Para citar um resultado reproduzido, recomenda-se registrar conjuntamente: versão e data do Atlas, SHA-256 do CSV, ano da malha do IBGE, commit do repositório e data de acesso.
 
@@ -203,6 +207,6 @@ Para citar um resultado reproduzido, recomenda-se registrar conjuntamente: vers�
 
 ## 12. Referências oficiais
 
-- BRASIL. Ministério da Integração e do Desenvolvimento Regional. [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/). Base consolidada v1.1, 06 ago. 2026.
+- BRASIL. Ministério da Integração e do Desenvolvimento Regional. [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/). A edição efetivamente utilizada consta no manifesto e no relatório de atualização.
 - BRASIL. Ministério da Integração e do Desenvolvimento Regional. [MIDR atualiza Atlas Digital de Desastres com dados consolidados até 2025](https://www.gov.br/mdr/pt-br/noticias/midr-atualiza-atlas-digital-de-desastres-com-dados-consolidados-ate-2025). 26 maio 2026.
 - IBGE — Instituto Brasileiro de Geografia e Estatística. [Malha Municipal Digital 2025](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html). Acesso em 26 ago. 2026.

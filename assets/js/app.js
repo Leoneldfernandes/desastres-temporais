@@ -111,6 +111,7 @@ const UPDATE_STATUS_URL =
 
 const dom = Object.fromEntries(
   [
+    "brandCoverage",
     "ufSelector",
     "dataStatus",
     "dataStatusText",
@@ -494,6 +495,9 @@ function indexData(manifest, summary, geometry) {
 
   state.geometryCache.set("BR", geometry);
   state.activeTypes = new Set(state.types.map((type) => type.id));
+  const firstYear = state.periods[0].slice(0, 4);
+  const lastYear = state.periods.at(-1).slice(0, 4);
+  dom.brandCoverage.textContent = `Atlas brasileiro · ${firstYear}–${lastYear}`;
 }
 
 function buildUfSelector() {
