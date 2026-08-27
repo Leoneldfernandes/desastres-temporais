@@ -896,10 +896,27 @@ async function openMunicipalityDetail(code) {
   }
 }
 
-function detailMetric(label, value, formatter = formatInteger) {
-  return `<div class="event-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(
-    formatter.format(value)
-  )}</strong></div>`;
+function financialImpactBand(value) {
+  if (value <= 100_000) return "low";
+  if (value <= 1_000_000) return "moderate";
+  if (value <= 10_000_000) return "high";
+  return "very-high";
+}
+
+function detailMetric(label, value, { formatter = formatInteger, typeColor = null, financial = false } = {}) {
+  const classes = ["event-metric"];
+  let style = "";
+
+  if (value > 0 && typeColor) {
+    classes.push("event-metric--human-positive");
+    style = ` style="--event-color:${escapeHtml(typeColor)}"`;
+  } else if (value > 0 && financial) {
+    classes.push("event-metric--financial", `event-metric--financial-${financialImpactBand(value)}`);
+  }
+
+  return `<div class="${classes.join(" ")}"${style}><span>${escapeHtml(
+    label
+  )}</span><strong>${escapeHtml(formatter.format(value))}</strong></div>`;
 }
 
 function renderEventDetails(rows) {
@@ -919,6 +936,13 @@ function renderEventDetails(rows) {
       <span class="detail-chip">${formatInteger.format(rows.length)} ${rows.length === 1 ? "registro" : "registros"}</span>
       <span class="detail-chip">${formatInteger.format(totalHuman)} danos humanos</span>
       <span class="detail-chip">${formatCurrency.format(totalLoss)} em prejuízos</span>
+    </div>
+    <div class="detail-legend" aria-label="Legenda dos destaques dos registros">
+      <span class="detail-legend-human">Danos humanos: cor da tipologia</span>
+      <span><i class="detail-legend-swatch financial-low" aria-hidden="true"></i>Até R$ 100 mil</span>
+      <span><i class="detail-legend-swatch financial-moderate" aria-hidden="true"></i>R$ 100 mil a R$ 1 milhão</span>
+      <span><i class="detail-legend-swatch financial-high" aria-hidden="true"></i>R$ 1 milhão a R$ 10 milhões</span>
+      <span><i class="detail-legend-swatch financial-very-high" aria-hidden="true"></i>Acima de R$ 10 milhões</span>
     </div>`;
 
   const cards = rows
@@ -939,17 +963,23 @@ function renderEventDetails(rows) {
             </div>
           </header>
           <div class="event-grid">
-            ${detailMetric("Danos humanos", row[EVENT.human])}
-            ${detailMetric("Mortos", row[EVENT.deaths])}
-            ${detailMetric("Feridos", row[EVENT.injured])}
-            ${detailMetric("Enfermos", row[EVENT.sick])}
-            ${detailMetric("Desabrigados", row[EVENT.homeless])}
-            ${detailMetric("Desalojados", row[EVENT.displaced])}
-            ${detailMetric("Desaparecidos", row[EVENT.missing])}
-            ${detailMetric("Afetados por seca", row[EVENT.drought])}
-            ${detailMetric("Outros afetados", row[EVENT.other])}
-            ${detailMetric("Prejuízo público", row[EVENT.publicLoss], formatCurrency)}
-            ${detailMetric("Prejuízo privado", row[EVENT.privateLoss], formatCurrency)}
+            ${detailMetric("Danos humanos", row[EVENT.human], { typeColor: type.color })}
+            ${detailMetric("Mortos", row[EVENT.deaths], { typeColor: type.color })}
+            ${detailMetric("Feridos", row[EVENT.injured], { typeColor: type.color })}
+            ${detailMetric("Enfermos", row[EVENT.sick], { typeColor: type.color })}
+            ${detailMetric("Desabrigados", row[EVENT.homeless], { typeColor: type.color })}
+            ${detailMetric("Desalojados", row[EVENT.displaced], { typeColor: type.color })}
+            ${detailMetric("Desaparecidos", row[EVENT.missing], { typeColor: type.color })}
+            ${detailMetric("Afetados por seca", row[EVENT.drought], { typeColor: type.color })}
+            ${detailMetric("Outros afetados", row[EVENT.other], { typeColor: type.color })}
+            ${detailMetric("Prejuízo público", row[EVENT.publicLoss], {
+              formatter: formatCurrency,
+              financial: true,
+            })}
+            ${detailMetric("Prejuízo privado", row[EVENT.privateLoss], {
+              formatter: formatCurrency,
+              financial: true,
+            })}
           </div>
         </article>`;
     })
