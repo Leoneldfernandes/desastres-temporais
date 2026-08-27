@@ -147,6 +147,7 @@ const dom = Object.fromEntries(
 const state = {
   ready: false,
   manifest: null,
+  dataVersion: null,
   periods: [],
   types: [],
   summaryByPeriod: [],
@@ -277,8 +278,14 @@ function humanImpactBand(total) {
   return 0;
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url, { cache: "default" });
+function versionedDataUrl(url) {
+  if (!state.dataVersion) throw new Error("Versão dos dados ainda não definida.");
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${encodeURIComponent(state.dataVersion)}`;
+}
+
+async function fetchJson(url, cache = "default") {
+  const response = await fetch(url, { cache });
   if (!response.ok) throw new Error(`${response.status} ao carregar ${url}`);
   const buffer = await response.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -686,7 +693,7 @@ function closeMapTooltip() {
 }
 
 function eventFileUrl(uf) {
-  return state.manifest.files.stateEventsPattern.replace("{UF}", uf);
+  return versionedDataUrl(state.manifest.files.stateEventsPattern.replace("{UF}", uf));
 }
 
 function loadStateEvents(uf) {
@@ -869,7 +876,7 @@ function removePlaybackBlock(reason) {
 }
 
 function geometryFileUrl(uf) {
-  return state.manifest.files.stateGeometryPattern.replace("{UF}", uf);
+  return versionedDataUrl(state.manifest.files.stateGeometryPattern.replace("{UF}", uf));
 }
 
 async function changeScope(nextUf) {
@@ -982,10 +989,12 @@ function bindEvents() {
 async function initialize() {
   bindEvents();
   try {
-    const manifest = await fetchJson("data/manifest.json");
+    const manifest = await fetchJson("data/manifest.json", "no-cache");
+    state.dataVersion = String(manifest.generatedAt || "").trim();
+    if (!state.dataVersion) throw new Error("Manifesto sem identificação de geração.");
     const [summary, geometry] = await Promise.all([
-      fetchJson(manifest.files.summary),
-      fetchJson(manifest.files.nationalGeometry),
+      fetchJson(versionedDataUrl(manifest.files.summary)),
+      fetchJson(versionedDataUrl(manifest.files.nationalGeometry)),
     ]);
     validatePayloads(manifest, summary, geometry);
     indexData(manifest, summary, geometry);

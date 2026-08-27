@@ -42,6 +42,9 @@ jobs:
       - name: Verificar sintaxe dos scripts
         run: python -m py_compile scripts/build_data.py scripts/validate_build.py
 
+      - name: Verificar sintaxe da aplicação
+        run: node --check assets/js/app.js
+
       - name: Validar integridade dos dados publicados
         run: python scripts/validate_build.py --data data --strict-current
 
