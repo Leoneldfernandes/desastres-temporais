@@ -32,6 +32,20 @@ class UpdateStatusTests(unittest.TestCase):
         self.write_status()
         validate_update_status(self.data)
 
+    def test_completed_checks_require_timestamp(self) -> None:
+        self.write_status(status="up-to-date")
+        with self.assertRaises(AssertionError):
+            validate_update_status(self.data)
+
+        self.write_status(
+            status="update-available",
+            availableVersion="v1.2 — 24/08/2026",
+            availableSourceUrl="https://atlasdigital.mdr.gov.br/nova-base.csv",
+            detectedAt="2026-08-24T11:00:00+00:00",
+        )
+        with self.assertRaises(AssertionError):
+            validate_update_status(self.data)
+
     def test_available_update_requires_auditable_metadata(self) -> None:
         self.write_status(status="update-available")
         with self.assertRaises(AssertionError):
