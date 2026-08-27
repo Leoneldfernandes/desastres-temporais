@@ -752,23 +752,33 @@ input:focus-visible,
 .share-view-button {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 5px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
+  justify-content: flex-start;
+  width: 112px;
+  min-height: 36px;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text);
   cursor: pointer;
   font-size: 0.61rem;
   font-weight: 700;
+  line-height: 1.15;
+  text-align: left;
+  white-space: normal;
 }
 
 .share-view-button:hover {
-  background: rgba(66, 214, 232, 0.08);
-  color: var(--cyan);
+  border-color: rgba(66, 214, 232, 0.5);
+  background: var(--surface-3);
 }
 
 .share-view-button.is-copied { color: var(--success); }
+
+.share-view-icon { flex: 0 0 auto; }
+
+#shareViewLabel { flex: 1; }
 
 .button,
 .icon-button {
