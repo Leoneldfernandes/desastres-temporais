@@ -93,8 +93,6 @@ const formatCurrency = new Intl.NumberFormat("pt-BR", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-const monthLong = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
-const monthShort = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" });
 const dateTimeShort = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
@@ -280,14 +278,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function periodDate(period) {
-  const [year, month] = period.split("-").map(Number);
-  return new Date(year, month - 1, 1, 12);
-}
-
-function periodLabel(period, short = false) {
-  const label = (short ? monthShort : monthLong).format(periodDate(period));
-  return label.charAt(0).toUpperCase() + label.slice(1);
+function periodLabel(period) {
+  const [year, month] = String(period).split("-");
+  return `${month}/${year}`;
 }
 
 function isoDateLabel(value) {
@@ -300,11 +293,6 @@ function dateTimeLabel(value, emptyLabel = "Ainda não realizada") {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "Data não informada";
   return dateTimeShort.format(parsed);
-}
-
-function numericPeriodLabel(period) {
-  const [year, month] = String(period).split("-");
-  return `${month}/${year}`;
 }
 
 function humanImpactBand(total) {
@@ -387,9 +375,9 @@ function renderUpdateStatus() {
   dom.updatePanelState.textContent = view.panelLabel;
   dom.updateStatusMessage.textContent = view.message;
   dom.publishedVersion.textContent = state.manifest.version;
-  dom.publishedCoverage.textContent = `${numericPeriodLabel(
+  dom.publishedCoverage.textContent = `${periodLabel(
     state.periods[0]
-  )} a ${numericPeriodLabel(state.periods.at(-1))}`;
+  )} a ${periodLabel(state.periods.at(-1))}`;
   dom.publishedGeneratedAt.textContent = dateTimeLabel(
     state.manifest.generatedAt,
     "Não informada"
@@ -788,7 +776,7 @@ function tooltipContent(code) {
   const title = `<strong class="tooltip-title">${escapeHtml(meta.name)} — ${meta.uf}</strong>`;
   if (!aggregate) {
     return `${title}<span class="tooltip-empty">Sem ocorrência para os filtros em ${escapeHtml(
-      periodLabel(state.periods[state.currentPeriod], true)
+      periodLabel(state.periods[state.currentPeriod])
     )}.</span>`;
   }
   const type = state.types[aggregate.dominantType];
@@ -1174,8 +1162,8 @@ async function initialize() {
     renderGeography(geometry, true);
 
     dom.periodSlider.max = String(state.periods.length - 1);
-    dom.minPeriod.textContent = periodLabel(state.periods[0], true);
-    dom.maxPeriod.textContent = periodLabel(state.periods.at(-1), true);
+    dom.minPeriod.textContent = periodLabel(state.periods[0]);
+    dom.maxPeriod.textContent = periodLabel(state.periods.at(-1));
     state.ready = true;
     setPeriod(0);
     renderUpdateStatus();

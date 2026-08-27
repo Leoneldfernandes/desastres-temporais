@@ -66,6 +66,7 @@ Cada atualização aprovada mantém permanentemente os dois relatórios em `docs
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
 - indicador clicável no topo com versão, período, geração e estado da verificação do Atlas;
 - série mensal contínua indicada no manifesto, inclusive os meses sem registros;
+- datas mensais exibidas no formato numérico `MM/AAAA`;
 - filtro territorial Brasil/UF;
 - 16 tipologias oficiais, cada uma com cor fixa;
 - cor municipal definida pela tipologia com mais danos humanos no mês;
