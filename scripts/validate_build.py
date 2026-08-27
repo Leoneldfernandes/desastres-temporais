@@ -50,6 +50,8 @@ def validate_update_status(data: Path) -> None:
     assert payload["status"] in UPDATE_STATES
 
     checked_at = payload.get("checkedAt")
+    if payload["status"] in {"up-to-date", "update-available"}:
+        assert checked_at
     if checked_at is not None:
         assert date.fromisoformat(str(checked_at)[:10])
 
