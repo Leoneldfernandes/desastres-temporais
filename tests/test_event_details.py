@@ -40,14 +40,17 @@ class EventDetailInteractionTests(unittest.TestCase):
         for level in ("low", "moderate", "high", "very-high"):
             self.assertIn(f".event-metric--financial-{level}", self.styles)
 
-    def test_detail_legend_explains_human_and_financial_colors(self) -> None:
-        self.assertIn("Danos humanos: cor da tipologia", self.script)
+    def test_detail_legend_explains_financial_colors(self) -> None:
+        self.assertIn("Prejuízos econômicos", self.script)
+        self.assertNotIn("Danos humanos: cor da tipologia", self.script)
         self.assertIn("Até R$ 100 mil", self.script)
         self.assertIn("R$ 100 mil a R$ 1 milhão", self.script)
         self.assertIn("R$ 1 milhão a R$ 10 milhões", self.script)
         self.assertIn("Acima de R$ 10 milhões", self.script)
         self.assertIn('class="detail-legend"', self.script)
+        self.assertIn("dom.detailContent.innerHTML = summary + cards + legend;", self.script)
         self.assertIn(".detail-legend", self.styles)
+        self.assertIn("margin-top: 12px", self.styles)
 
 
 if __name__ == "__main__":
