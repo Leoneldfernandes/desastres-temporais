@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "awaiting-first-check",
-  "checkedAt": null,
+  "status": "up-to-date",
+  "checkedAt": "2026-08-27T12:00:30+00:00",
   "availableVersion": null,
   "availableSourceUrl": null,
   "detectedAt": null
