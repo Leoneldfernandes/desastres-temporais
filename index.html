@@ -10,9 +10,9 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=41b9385963d8">
+    <link rel="stylesheet" href="assets/css/app.css?v=c69e355c35ca">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=44442fa23aee"></script>
+    <script defer src="assets/js/app.js?v=4ce04a60663d"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -163,6 +163,43 @@
 
       <section class="map-stage" aria-label="Mapa do Brasil">
         <div id="map" tabindex="0" aria-label="Mapa interativo dos municípios brasileiros"></div>
+
+        <div class="municipality-locator" id="municipalityLocator">
+          <button
+            class="municipality-search-toggle"
+            id="municipalitySearchToggle"
+            type="button"
+            aria-label="Localizar município"
+            aria-expanded="false"
+            aria-controls="municipalitySearchPanel"
+          >
+            <span class="municipality-search-icon" aria-hidden="true"></span>
+          </button>
+          <section class="municipality-search-panel" id="municipalitySearchPanel" hidden>
+            <div class="municipality-search-field">
+              <span class="municipality-search-icon" aria-hidden="true"></span>
+              <input
+                id="municipalitySearchInput"
+                type="search"
+                autocomplete="off"
+                placeholder="Localizar município"
+                aria-label="Localizar município"
+                aria-controls="municipalitySearchResults"
+                aria-describedby="municipalitySearchStatus"
+              >
+              <button
+                class="municipality-search-clear"
+                id="municipalitySearchClear"
+                type="button"
+                aria-label="Limpar município localizado"
+              >×</button>
+            </div>
+            <p class="municipality-search-status" id="municipalitySearchStatus" aria-live="polite">
+              Digite ao menos duas letras.
+            </p>
+            <ul class="municipality-search-results" id="municipalitySearchResults"></ul>
+          </section>
+        </div>
 
         <div class="map-key" aria-hidden="true">
           <span><i class="key-swatch key-active"></i> ocorrência</span>

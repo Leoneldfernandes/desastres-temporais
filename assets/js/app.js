@@ -162,6 +162,13 @@ const dom = Object.fromEntries(
     "damageAffected",
     "damagePublic",
     "damagePrivate",
+    "municipalityLocator",
+    "municipalitySearchToggle",
+    "municipalitySearchPanel",
+    "municipalitySearchInput",
+    "municipalitySearchClear",
+    "municipalitySearchStatus",
+    "municipalitySearchResults",
     "detailModal",
     "detailEyebrow",
     "detailTitle",
@@ -179,6 +186,7 @@ const state = {
   types: [],
   summaryByPeriod: [],
   municipalityByCode: new Map(),
+  municipalitySearchIndex: [],
   geometryCache: new Map(),
   eventCache: new Map(),
   layerByCode: new Map(),
@@ -198,6 +206,7 @@ const state = {
   mapResumeTimer: null,
   tableFrame: null,
   detailSnapshot: null,
+  locatedMunicipalityCode: null,
   urlSyncReady: false,
   shareFeedbackTimer: null,
 };
@@ -274,6 +283,13 @@ const municipalityTooltip = L.tooltip({
   opacity: 1,
   offset: [0, -4],
 });
+const municipalityLocatorPopup = L.popup({
+  className: "municipality-locator-popup",
+  closeButton: true,
+  autoPan: true,
+  maxWidth: 280,
+  offset: [0, -4],
+});
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -282,6 +298,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function normalizeSearchText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
 }
 
 function periodDate(period) {
@@ -339,7 +363,14 @@ function viewStateFromUrl() {
   const municipalityCode =
     municipality && (uf === "BR" || municipality.uf === uf) ? requestedMunicipality : null;
 
-  return { uf, periodIndex, types, municipalityCode };
+  const requestedLocatedMunicipality = String(params.get("localizar") || "");
+  const locatedMunicipality = state.municipalityByCode.get(requestedLocatedMunicipality);
+  const locatedMunicipalityCode =
+    locatedMunicipality && (uf === "BR" || locatedMunicipality.uf === uf)
+      ? requestedLocatedMunicipality
+      : null;
+
+  return { uf, periodIndex, types, municipalityCode, locatedMunicipalityCode };
 }
 
 function applyTypeSelection(typeIds) {
@@ -368,6 +399,11 @@ function syncViewUrl() {
 
   if (state.detailSnapshot?.code) url.searchParams.set("municipio", state.detailSnapshot.code);
   else url.searchParams.delete("municipio");
+  if (state.locatedMunicipalityCode) {
+    url.searchParams.set("localizar", state.locatedMunicipalityCode);
+  } else {
+    url.searchParams.delete("localizar");
+  }
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -583,6 +619,16 @@ function indexData(manifest, summary, geometry) {
     });
   }
 
+  state.municipalitySearchIndex = [...state.municipalityByCode.values()]
+    .map((municipality) => ({
+      ...municipality,
+      searchName: normalizeSearchText(municipality.name),
+    }))
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(b.name, "pt-BR") || a.uf.localeCompare(b.uf, "pt-BR")
+    );
+
   state.geometryCache.set("BR", geometry);
   state.activeTypes = new Set(state.types.map((type) => type.id));
   const firstYear = state.periods[0].slice(0, 4);
@@ -613,13 +659,13 @@ function buildTypeFilters() {
     .join("");
 }
 
-function layerStyle(aggregate, hovered = false) {
+function layerStyle(aggregate, hovered = false, located = false) {
   if (!aggregate) {
-    if (!hovered) return EMPTY_STYLE;
+    if (!hovered && !located) return EMPTY_STYLE;
     return {
       ...EMPTY_STYLE,
-      color: "#42d6e8",
-      weight: 2,
+      color: hovered ? "#ffffff" : "#42d6e8",
+      weight: located ? 4 : 2,
       opacity: 0.95,
     };
   }
@@ -628,13 +674,17 @@ function layerStyle(aggregate, hovered = false) {
   const multiple = aggregate.typeCount > 1;
   const band = humanImpactBand(aggregate.human);
   return {
-    color: hovered ? "#ffffff" : multiple ? "#ffd166" : "#d9edf4",
-    weight: hovered ? 3.2 : 1.05 + band * 0.38,
+    color: hovered ? "#ffffff" : located ? "#42d6e8" : multiple ? "#ffd166" : "#d9edf4",
+    weight: hovered ? 3.2 : located ? 4 : 1.05 + band * 0.38,
     opacity: hovered ? 1 : multiple ? 0.98 : 0.84,
     fillColor: type.color,
     fillOpacity: hovered ? 0.92 : 0.79,
     dashArray: multiple && !hovered ? "5 3" : null,
   };
+}
+
+function municipalityLayerStyle(code, aggregate = state.currentAggregates.get(code), hovered = false) {
+  return layerStyle(aggregate, hovered, state.locatedMunicipalityCode === code);
 }
 
 function renderGeography(geometry, fitBounds = false) {
@@ -755,16 +805,21 @@ function calculatePeriod(periodIndex) {
 }
 
 function updateMapStyles(aggregates) {
-  const changed = new Set([...state.previousStyledCodes, ...aggregates.keys()]);
+  const changed = new Set([
+    ...state.previousStyledCodes,
+    ...aggregates.keys(),
+    state.locatedMunicipalityCode,
+  ]);
   for (const code of changed) {
+    if (!code) continue;
     const layer = state.layerByCode.get(code);
-    if (layer) layer.setStyle(layerStyle(aggregates.get(code)));
+    if (layer) layer.setStyle(municipalityLayerStyle(code, aggregates.get(code)));
   }
   state.previousStyledCodes = new Set(aggregates.keys());
 
   if (state.hovered) {
     const layer = state.layerByCode.get(state.hovered.code);
-    if (layer) layer.setStyle(layerStyle(aggregates.get(state.hovered.code), true));
+    if (layer) layer.setStyle(municipalityLayerStyle(state.hovered.code, aggregates.get(state.hovered.code), true));
   }
 }
 
@@ -871,6 +926,11 @@ function setPeriod(index) {
   if (state.hovered && municipalityTooltip._map) {
     municipalityTooltip.setContent(tooltipContent(state.hovered.code));
   }
+  if (state.locatedMunicipalityCode && municipalityLocatorPopup._map) {
+    municipalityLocatorPopup.setContent(
+      municipalityLocatorSummary(state.locatedMunicipalityCode)
+    );
+  }
   syncViewUrl();
 }
 
@@ -894,15 +954,174 @@ function tooltipContent(code) {
     <span class="tooltip-meta">Clique para abrir os registros completos.</span>`;
 }
 
+function municipalityLocatorSummary(code) {
+  const meta = state.municipalityByCode.get(code);
+  const aggregate = state.currentAggregates.get(code);
+  const container = document.createElement("div");
+  container.className = "municipality-locator-summary";
+
+  const title = document.createElement("strong");
+  title.textContent = `${meta.name} — ${meta.uf}`;
+  container.append(title);
+
+  const summary = document.createElement("span");
+  if (aggregate) {
+    summary.textContent = `${periodLabel(state.periods[state.currentPeriod], true)} · ${formatInteger.format(
+      aggregate.events
+    )} ${aggregate.events === 1 ? "evento" : "eventos"} · ${formatInteger.format(
+      aggregate.human
+    )} danos humanos`;
+  } else {
+    summary.textContent = `Sem ocorrência para os filtros em ${periodLabel(
+      state.periods[state.currentPeriod],
+      true
+    )}.`;
+  }
+  container.append(summary);
+
+  const detailButton = document.createElement("button");
+  detailButton.className = "municipality-locator-detail";
+  detailButton.type = "button";
+  detailButton.textContent = "Ver detalhes";
+  detailButton.addEventListener("click", () => openMunicipalityDetail(code));
+  container.append(detailButton);
+  return container;
+}
+
+function setLocatedMunicipality(code) {
+  const previousCode = state.locatedMunicipalityCode;
+  state.locatedMunicipalityCode = code;
+
+  for (const changedCode of new Set([previousCode, code])) {
+    if (!changedCode) continue;
+    const layer = state.layerByCode.get(changedCode);
+    if (layer) layer.setStyle(municipalityLayerStyle(changedCode));
+  }
+
+  const meta = code ? state.municipalityByCode.get(code) : null;
+  dom.municipalitySearchToggle.classList.toggle("has-selection", Boolean(meta));
+  dom.municipalitySearchToggle.setAttribute(
+    "aria-label",
+    meta ? `Município localizado: ${meta.name} — ${meta.uf}` : "Localizar município"
+  );
+  syncViewUrl();
+}
+
+function openMunicipalitySearch() {
+  const meta = state.locatedMunicipalityCode
+    ? state.municipalityByCode.get(state.locatedMunicipalityCode)
+    : null;
+  dom.municipalitySearchPanel.hidden = false;
+  dom.municipalitySearchToggle.classList.add("is-active");
+  dom.municipalitySearchToggle.setAttribute("aria-expanded", "true");
+  dom.municipalitySearchInput.value = meta ? `${meta.name} — ${meta.uf}` : "";
+  dom.municipalitySearchResults.innerHTML = "";
+  dom.municipalitySearchStatus.textContent = meta
+    ? `${meta.name} — ${meta.uf} está localizado.`
+    : "Digite ao menos duas letras.";
+  requestAnimationFrame(() => {
+    dom.municipalitySearchInput.focus();
+    dom.municipalitySearchInput.select();
+  });
+}
+
+function closeMunicipalitySearch(returnFocus = false) {
+  if (dom.municipalitySearchPanel.hidden) return;
+  dom.municipalitySearchPanel.hidden = true;
+  dom.municipalitySearchToggle.classList.remove("is-active");
+  dom.municipalitySearchToggle.setAttribute("aria-expanded", "false");
+  dom.municipalitySearchResults.innerHTML = "";
+  if (returnFocus) dom.municipalitySearchToggle.focus();
+}
+
+function renderMunicipalitySearchResults() {
+  const query = normalizeSearchText(dom.municipalitySearchInput.value);
+  dom.municipalitySearchResults.innerHTML = "";
+
+  if (query.length < 2) {
+    dom.municipalitySearchStatus.textContent = "Digite ao menos duas letras.";
+    return;
+  }
+
+  const matches = state.municipalitySearchIndex
+    .filter((municipality) => municipality.searchName.includes(query))
+    .sort((a, b) => {
+      const aStarts = a.searchName.startsWith(query) ? 0 : 1;
+      const bStarts = b.searchName.startsWith(query) ? 0 : 1;
+      return aStarts - bStarts || a.name.localeCompare(b.name, "pt-BR") || a.uf.localeCompare(b.uf);
+    })
+    .slice(0, 8);
+
+  dom.municipalitySearchStatus.textContent = matches.length
+    ? `${matches.length} ${matches.length === 1 ? "resultado encontrado" : "resultados encontrados"}.`
+    : "Nenhum município encontrado.";
+
+  for (const municipality of matches) {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.className = "municipality-search-result";
+    button.type = "button";
+    button.dataset.code = municipality.code;
+    button.innerHTML = `<span class="municipality-search-result-name">${escapeHtml(
+      municipality.name
+    )}</span><span class="municipality-search-result-uf">${municipality.uf}</span>`;
+    item.append(button);
+    dom.municipalitySearchResults.append(item);
+  }
+}
+
+async function locateMunicipality(code) {
+  if (!state.ready) return;
+  const meta = state.municipalityByCode.get(String(code));
+  if (!meta) return;
+
+  if (state.scopeUF !== "BR" && state.scopeUF !== meta.uf) {
+    dom.ufSelector.value = meta.uf;
+    await changeScope(meta.uf);
+    if (state.scopeUF !== meta.uf) return;
+  }
+
+  setLocatedMunicipality(meta.code);
+  closeMunicipalitySearch();
+
+  const layer = state.layerByCode.get(meta.code);
+  if (!layer) return;
+  layer.setStyle(municipalityLayerStyle(meta.code));
+  if (typeof layer.bringToFront === "function") layer.bringToFront();
+  map.fitBounds(layer.getBounds(), {
+    padding: [54, 54],
+    maxZoom: 10,
+    animate: false,
+  });
+  municipalityLocatorPopup
+    .setLatLng(layer.getBounds().getCenter())
+    .setContent(municipalityLocatorSummary(meta.code))
+    .openOn(map);
+}
+
+function clearLocatedMunicipality() {
+  const previousCode = state.locatedMunicipalityCode;
+  setLocatedMunicipality(null);
+  if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
+  dom.municipalitySearchInput.value = "";
+  dom.municipalitySearchResults.innerHTML = "";
+  dom.municipalitySearchStatus.textContent = "Digite ao menos duas letras.";
+  if (previousCode) {
+    const layer = state.layerByCode.get(previousCode);
+    if (layer) layer.setStyle(municipalityLayerStyle(previousCode));
+  }
+  dom.municipalitySearchInput.focus();
+}
+
 function handleMunicipalityHover(event, code) {
   clearTimeout(state.hoverTimer);
   const previous = state.hovered?.code;
   if (previous && previous !== code) {
     const previousLayer = state.layerByCode.get(previous);
-    if (previousLayer) previousLayer.setStyle(layerStyle(state.currentAggregates.get(previous)));
+    if (previousLayer) previousLayer.setStyle(municipalityLayerStyle(previous));
   }
   state.hovered = { code, latlng: event.latlng };
-  event.target.setStyle(layerStyle(state.currentAggregates.get(code), true));
+  event.target.setStyle(municipalityLayerStyle(code, state.currentAggregates.get(code), true));
   const delay = state.playbackWanted ? 140 : 0;
   state.hoverTimer = window.setTimeout(() => {
     if (!state.hovered || state.hovered.code !== code) return;
@@ -919,7 +1138,7 @@ function handleMunicipalityMove(event, code) {
 function handleMunicipalityOut(code) {
   clearTimeout(state.hoverTimer);
   const layer = state.layerByCode.get(code);
-  if (layer) layer.setStyle(layerStyle(state.currentAggregates.get(code)));
+  if (layer) layer.setStyle(municipalityLayerStyle(code));
   if (state.hovered?.code === code) state.hovered = null;
   closeMapTooltip();
 }
@@ -929,7 +1148,7 @@ function closeMapTooltip() {
   const hoveredCode = state.hovered?.code;
   if (hoveredCode) {
     const layer = state.layerByCode.get(hoveredCode);
-    if (layer) layer.setStyle(layerStyle(state.currentAggregates.get(hoveredCode)));
+    if (layer) layer.setStyle(municipalityLayerStyle(hoveredCode));
   }
   if (municipalityTooltip._map) municipalityTooltip.removeFrom(map);
   state.hovered = null;
@@ -1170,6 +1389,14 @@ async function changeScope(nextUf) {
       state.geometryCache.set(nextUf, geometry);
     }
     state.scopeUF = nextUf;
+    const locatedMeta = state.locatedMunicipalityCode
+      ? state.municipalityByCode.get(state.locatedMunicipalityCode)
+      : null;
+    if (locatedMeta && nextUf !== "BR" && locatedMeta.uf !== nextUf) {
+      setLocatedMunicipality(null);
+      if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
+      dom.municipalitySearchInput.value = "";
+    }
     renderGeography(geometry, true);
     dom.scopePill.textContent = UF_NAMES[nextUf];
     setPeriod(state.currentPeriod);
@@ -1214,6 +1441,12 @@ function bindEvents() {
     ) {
       setUpdateStatusPanel(false);
     }
+    if (
+      !dom.municipalitySearchPanel.hidden &&
+      !event.target.closest("#municipalityLocator")
+    ) {
+      closeMunicipalitySearch();
+    }
   });
   dom.ufSelector.addEventListener("change", (event) => changeScope(event.target.value));
   dom.typeList.addEventListener("change", handleTypeChange);
@@ -1222,6 +1455,35 @@ function bindEvents() {
   dom.previousPeriod.addEventListener("click", () => setPeriod(state.currentPeriod - 1));
   dom.nextPeriod.addEventListener("click", () => setPeriod(state.currentPeriod + 1));
   dom.shareView.addEventListener("click", shareCurrentView);
+  dom.municipalitySearchToggle.addEventListener("click", () => {
+    if (dom.municipalitySearchPanel.hidden) openMunicipalitySearch();
+    else closeMunicipalitySearch(true);
+  });
+  dom.municipalitySearchInput.addEventListener("input", renderMunicipalitySearchResults);
+  dom.municipalitySearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") {
+      const firstResult = dom.municipalitySearchResults.querySelector("button");
+      if (firstResult) {
+        event.preventDefault();
+        firstResult.focus();
+      }
+    }
+  });
+  dom.municipalitySearchClear.addEventListener("click", clearLocatedMunicipality);
+  dom.municipalitySearchResults.addEventListener("click", (event) => {
+    const result = event.target.closest("button[data-code]");
+    if (result) locateMunicipality(result.dataset.code);
+  });
+  dom.municipalitySearchResults.addEventListener("keydown", (event) => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    const buttons = [...dom.municipalitySearchResults.querySelectorAll("button")];
+    const currentIndex = buttons.indexOf(document.activeElement);
+    if (currentIndex < 0) return;
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = (currentIndex + direction + buttons.length) % buttons.length;
+    buttons[nextIndex].focus();
+  });
   dom.playButton.addEventListener("click", togglePlayback);
   dom.speedSelect.addEventListener("change", () => {
     state.playbackSpeed = Number(dom.speedSelect.value);
@@ -1241,6 +1503,10 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (!dom.municipalitySearchPanel.hidden) {
+        closeMunicipalitySearch(true);
+        return;
+      }
       if (dom.dataStatus.getAttribute("aria-expanded") === "true") {
         setUpdateStatusPanel(false, true);
       }
@@ -1306,6 +1572,7 @@ async function initialize() {
       state.geometryCache.set(initialView.uf, initialGeometry);
     }
     state.scopeUF = initialView.uf;
+    state.locatedMunicipalityCode = initialView.locatedMunicipalityCode;
     dom.ufSelector.value = initialView.uf;
     dom.scopePill.textContent = UF_NAMES[initialView.uf];
     renderGeography(initialGeometry, true);
@@ -1320,6 +1587,9 @@ async function initialize() {
     renderUpdateStatus();
     dom.dataStatus.disabled = false;
 
+    if (initialView.locatedMunicipalityCode) {
+      await locateMunicipality(initialView.locatedMunicipalityCode);
+    }
     if (initialView.municipalityCode) {
       await openMunicipalityDetail(initialView.municipalityCode);
     }
