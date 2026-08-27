@@ -22,9 +22,13 @@ class SharedViewTests(unittest.TestCase):
 
     def test_share_button_looks_clickable_and_keeps_two_line_label(self) -> None:
         self.assertIn('class="share-view-icon"', self.page)
+        self.assertLess(self.page.index('id="shareViewLabel"'), self.page.index('class="share-view-icon"'))
         self.assertIn("width: 112px", self.styles)
         self.assertIn("min-height: 36px", self.styles)
         self.assertIn("gap: 4px", self.styles)
+        self.assertIn("justify-content: center", self.styles)
+        self.assertIn("text-align: center", self.styles)
+        self.assertIn("#shareViewLabel { flex: 0 1 auto; }", self.styles)
         self.assertIn("border: 1px solid var(--line-strong)", self.styles)
         self.assertIn("background: var(--surface-2)", self.styles)
         self.assertIn("white-space: normal", self.styles)
