@@ -755,7 +755,7 @@ input:focus-visible,
   justify-content: center;
   width: 112px;
   min-height: 36px;
-  gap: 4px;
+  gap: 2px;
   padding: 5px 7px;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
@@ -778,7 +778,10 @@ input:focus-visible,
 
 .share-view-icon { flex: 0 0 auto; }
 
-#shareViewLabel { flex: 0 1 auto; }
+#shareViewLabel {
+  width: 66px;
+  flex: 0 0 66px;
+}
 
 .button,
 .icon-button {
