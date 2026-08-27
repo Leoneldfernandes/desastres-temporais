@@ -10,9 +10,9 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=1dc43164f1b3">
+    <link rel="stylesheet" href="assets/css/app.css?v=10850ba0d7e7">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=320c6fb4e7b6"></script>
+    <script defer src="assets/js/app.js?v=44442fa23aee"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -183,9 +183,15 @@
 
         <section class="timeline" aria-label="Linha temporal">
           <div class="timeline-topline">
-            <div>
-              <p class="eyebrow">Mês em exibição</p>
-              <strong class="current-period" id="displayPeriod">—</strong>
+            <div class="period-share">
+              <div class="period-display">
+                <p class="eyebrow">Mês em exibição</p>
+                <strong class="current-period" id="displayPeriod">—</strong>
+              </div>
+              <button class="share-view-button" type="button" id="shareView">
+                <span aria-hidden="true">↗</span>
+                <span id="shareViewLabel">Compartilhar visualização</span>
+              </button>
             </div>
             <div class="player-controls">
               <button class="icon-button" type="button" id="previousPeriod" aria-label="Mês anterior">
