@@ -20,6 +20,15 @@ class SharedViewTests(unittest.TestCase):
         self.assertIn('grid-template-areas: "period player speed"', self.styles)
         self.assertIn("grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)", self.styles)
 
+    def test_share_button_looks_clickable_and_keeps_two_line_label(self) -> None:
+        self.assertIn('class="share-view-icon"', self.page)
+        self.assertIn("width: 112px", self.styles)
+        self.assertIn("min-height: 36px", self.styles)
+        self.assertIn("gap: 4px", self.styles)
+        self.assertIn("border: 1px solid var(--line-strong)", self.styles)
+        self.assertIn("background: var(--surface-2)", self.styles)
+        self.assertIn("white-space: normal", self.styles)
+
     def test_mobile_places_share_action_below_playback_controls(self) -> None:
         mobile = re.search(
             r"@media \(max-width: 760px\) \{(?P<body>.*?)\n\}",
