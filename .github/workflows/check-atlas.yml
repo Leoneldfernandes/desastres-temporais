@@ -1,0 +1,121 @@
+name: Verificação semanal do Atlas
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+      timezone: "America/Sao_Paulo"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/check-atlas.yml"
+      - "scripts/check_atlas_update.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/check-atlas.yml"
+      - "scripts/check_atlas_update.py"
+      - "tests/test_check_atlas_update.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-check-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  live-check:
+    name: Consultar a página oficial do Atlas
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preparar o Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Consultar sem publicar
+        run: >-
+          python scripts/check_atlas_update.py
+          --manifest data/manifest.json
+          --previous-status data/update-status.json
+          --output /tmp/update-status.json
+
+      - name: Exibir o resultado da consulta
+        run: cat /tmp/update-status.json
+
+  publish-status:
+    name: Publicar somente o estado da verificação
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - name: Baixar o código da branch principal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: source
+          persist-credentials: false
+
+      - name: Baixar somente o estado publicado
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: atlas-status
+          path: status
+          sparse-checkout: data/update-status.json
+          sparse-checkout-cone-mode: false
+
+      - name: Preparar o Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Verificar a versão disponível
+        id: check
+        continue-on-error: true
+        working-directory: source
+        run: >-
+          python scripts/check_atlas_update.py
+          --manifest data/manifest.json
+          --previous-status ../status/data/update-status.json
+          --output ../status/data/update-status.json
+
+      - name: Validar o estado produzido
+        id: validate
+        if: always()
+        working-directory: source
+        run: >-
+          python -c "from pathlib import Path;
+          from scripts.validate_build import validate_update_status;
+          validate_update_status(Path('../status/data'))"
+
+      - name: Publicar o estado na branch técnica
+        if: always() && steps.validate.outcome == 'success'
+        working-directory: status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/update-status.json
+          if git diff --cached --quiet; then
+            echo "O estado já está atualizado."
+            exit 0
+          fi
+          git commit -m "chore: registra verificação semanal do Atlas"
+          git push origin HEAD:atlas-status
+
+      - name: Sinalizar falha da consulta
+        if: >-
+          always() &&
+          (steps.check.outcome == 'failure' || steps.validate.outcome == 'failure')
+        run: exit 1
