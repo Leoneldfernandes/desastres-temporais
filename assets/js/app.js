@@ -106,6 +106,8 @@ const UPDATE_STATES = new Set([
   "update-available",
   "check-failed",
 ]);
+const UPDATE_STATUS_URL =
+  "https://raw.githubusercontent.com/Leoneldfernandes/desastres-temporais/atlas-status/data/update-status.json";
 
 const dom = Object.fromEntries(
   [
@@ -420,12 +422,24 @@ function validateUpdateStatus(payload) {
   if (payload.checkedAt && Number.isNaN(new Date(payload.checkedAt).getTime())) {
     throw new Error("Data da verificação do Atlas inválida.");
   }
+  if (payload.status === "update-available") {
+    const source = new URL(payload.availableSourceUrl);
+    if (
+      !payload.availableVersion ||
+      source.protocol !== "https:" ||
+      source.hostname !== "atlasdigital.mdr.gov.br" ||
+      !payload.detectedAt ||
+      Number.isNaN(new Date(payload.detectedAt).getTime())
+    ) {
+      throw new Error("A atualização encontrada não possui metadados auditáveis.");
+    }
+  }
   return payload;
 }
 
 async function loadUpdateStatus() {
   try {
-    return validateUpdateStatus(await fetchJson("data/update-status.json", "no-cache"));
+    return validateUpdateStatus(await fetchJson(UPDATE_STATUS_URL, "no-store"));
   } catch (error) {
     console.warn(error);
     return {
