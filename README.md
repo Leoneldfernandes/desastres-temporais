@@ -1,6 +1,16 @@
 # Desastres no tempo
 
-Mapa espaço-temporal dos registros oficiais de desastres no Brasil, com todos os municípios e todos os meses de janeiro de 1991 a dezembro de 2025.
+Mapa espaço-temporal dos registros oficiais de desastres no Brasil, com cobertura nacional e todos os meses de janeiro de 1991 a dezembro de 2025.
+
+## Cobertura e metodologia
+
+A versão publicada usa a base consolidada v1.1 do Atlas Digital de Desastres no Brasil, de 06/08/2026. São **76.190 registros**, **420 meses contínuos**, **16 tipologias oficiais** e **5.573 municípios e unidades equivalentes** na malha cartográfica.
+
+O total territorial reproduz integralmente a Malha Municipal 2025 do IBGE: 5.569 municípios, o Distrito Federal (Brasília), o Distrito Estadual de Fernando de Noronha e duas Áreas Estaduais Operacionais do Rio Grande do Sul (Lagoa dos Patos e Lagoa Mirim). Portanto, o rótulo público “municípios e unidades equivalentes” é uma forma resumida; as duas áreas operacionais não são municípios. Boa Esperança do Norte (MT), instalado em 2025, está entre os 5.569 municípios. Nenhuma dessas feições é removida da malha.
+
+Cada linha da fonte representa um registro de desastre. O mês do mapa vem de `Data_Evento`; as somas são agrupadas por mês, código territorial e tipologia. A aplicação não inventa eventos para meses ou locais sem registro.
+
+As decisões de tratamento, variáveis, validações, limitações e composição territorial estão descritas em [Metodologia](docs/metodologia.md).
 
 ## Decisão de arquitetura
 
@@ -9,7 +19,7 @@ O CSV bruto do Atlas **não deve ser publicado nem lido pelo navegador**. A vers
 O repositório publica arquivos derivados e compactos:
 
 - `data/atlas-summary.json.gz`: resumo mensal usado pelo mapa, KPIs e tabela;
-- `data/geo/municipios-br.geojson.gz`: malha simplificada dos 5.573 municípios, carregada na abertura;
+- `data/geo/municipios-br.geojson.gz`: malha simplificada das 5.573 feições territoriais, carregada na abertura;
 - `data/geo/uf/*.json.gz`: malhas estaduais mais detalhadas, carregadas somente ao escolher uma UF;
 - `data/events/*.json.gz`: registros completos separados por UF, carregados somente ao clicar em um município.
 
@@ -17,7 +27,7 @@ Na primeira abertura, o navegador transfere aproximadamente 3,3 MB de dados comp
 
 ## Funcionalidades
 
-- 5.573 municípios visíveis desde a abertura;
+- 5.573 municípios e unidades equivalentes visíveis desde a abertura;
 - 420 meses contínuos, inclusive os meses sem registros;
 - filtro territorial Brasil/UF;
 - 16 tipologias oficiais, cada uma com cor fixa;
@@ -38,21 +48,20 @@ Na primeira abertura, o navegador transfere aproximadamente 3,3 MB de dados comp
 
 Não envie apenas o `index.html`: as pastas `assets` e `data` fazem parte do site.
 
-## Atualizar a base sem editar código
-
-O fluxo **Atualizar base oficial do Atlas** fica disponível na aba **Actions** do GitHub. Execute-o manualmente, confira o endereço e a versão sugeridos e clique em **Run workflow**. Ele baixa o CSV oficial, converte os dados, atualiza a malha municipal, valida as contagens e grava os arquivos derivados.
-
-O CSV temporário não é incorporado ao repositório.
-
-## Atualização local
+## Atualizar a base
 
 Requisitos: Python 3 e `mapshaper` 0.6.113.
 
 ```bash
-python3 scripts/build_data.py --atlas /caminho/BD_Atlas.csv --output data
+python3 scripts/build_data.py \
+  --atlas /caminho/BD_Atlas.csv \
+  --output data \
+  --report build-report.json
 MAPSHAPER_BIN=mapshaper scripts/build_geography.sh /caminho/BR_Municipios_2025.shp data/geo
-python3 scripts/validate_build.py --data data
+python3 scripts/validate_build.py --data data --strict-current
 ```
+
+O CSV bruto é usado apenas como entrada local e não é incorporado ao repositório. A publicação automática de uma nova versão será acrescentada em uma etapa própria; atualmente, somente a validação contínua está ativa no GitHub Actions.
 
 Para testar localmente:
 
@@ -64,7 +73,7 @@ Abra `http://localhost:8000`. A página não funciona corretamente ao abrir o HT
 
 ## Fontes
 
-- Desastres: Atlas Digital de Desastres no Brasil / MIDR, base consolidada v1.1 de 06/08/2026.
-- Limites municipais: Malha Municipal 2025 do IBGE.
+- Desastres: [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/) / MIDR, base consolidada v1.1 de 06/08/2026.
+- Limites territoriais: [Malha Municipal 2025 do IBGE](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html).
 - Biblioteca cartográfica: Leaflet 1.9.4, incluída localmente sob licença BSD-2-Clause.
 - Imagens de satélite: Esri, Maxar, Earthstar Geographics e comunidade GIS.
