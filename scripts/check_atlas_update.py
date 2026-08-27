@@ -68,7 +68,12 @@ class LinkParser(HTMLParser):
 
 def parse_release_url(url: str) -> AtlasRelease:
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname != OFFICIAL_HOST:
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != OFFICIAL_HOST
+        or parsed.query
+        or parsed.fragment
+    ):
         raise AtlasCheckError("O CSV encontrado não pertence ao domínio oficial do Atlas.")
 
     match = CSV_PATH_PATTERN.fullmatch(parsed.path)

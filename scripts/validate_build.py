@@ -10,15 +10,10 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
-
-CURRENT_RELEASE = {
-    "events": 76_190,
-    "summaryRows": 73_744,
-    "periods": 420,
-    "types": 16,
-    "municipalities": 5_573,
-    "scEvents": 9_108,
-}
+try:
+    from scripts.check_atlas_update import parse_release_url
+except ModuleNotFoundError:  # Permite executar diretamente: python scripts/...
+    from check_atlas_update import parse_release_url
 
 UPDATE_STATES = {
     "awaiting-first-check",
@@ -70,7 +65,7 @@ def main() -> None:
     parser.add_argument(
         "--strict-current",
         action="store_true",
-        help="Também confere as contagens exatas da base v1.1 de 06/08/2026.",
+        help="Mantido por compatibilidade; as invariantes científicas são sempre estritas.",
     )
     args = parser.parse_args()
 
@@ -91,12 +86,16 @@ def main() -> None:
     types = manifest["types"]
     rows = summary["rows"]
     features = geometry["features"]
+    release = parse_release_url(str(manifest["sourceUrl"]))
 
     assert stats["events"] == stats["uniqueProtocols"]
     assert stats["periods"] == len(periods)
     assert stats["types"] == len(types) == 16
+    assert manifest["version"] == release.label
     assert len(set(periods)) == len(periods)
     assert all(next_period(current) == following for current, following in zip(periods, periods[1:]))
+    assert periods[0] == f"{release.start_year:04d}-01"
+    assert periods[-1] == f"{release.end_year:04d}-12"
     assert len(summary["columns"]) == 15
     assert all(len(row) == len(summary["columns"]) for row in rows)
     assert all(0 <= row[0] < len(periods) for row in rows)
@@ -105,6 +104,7 @@ def main() -> None:
     geometry_codes = {str(feature["properties"]["cd"]) for feature in features}
     summary_codes = {str(row[1]) for row in rows}
     assert len(geometry_codes) == len(features)
+    assert len(features) == 5_573
     assert summary_codes <= geometry_codes
 
     uf_files = sorted((args.data / "events").glob("*.json.gz"))
@@ -126,17 +126,6 @@ def main() -> None:
     assert events_by_uf == stats["eventsByUf"]
 
     assert date.fromisoformat(manifest["generatedAt"][:10])
-
-    if args.strict_current:
-        assert stats["events"] == CURRENT_RELEASE["events"]
-        assert len(rows) == CURRENT_RELEASE["summaryRows"]
-        assert len(periods) == CURRENT_RELEASE["periods"]
-        assert periods[0] == "1991-01" and periods[-1] == "2025-12"
-        assert len(types) == CURRENT_RELEASE["types"]
-        assert len(features) == CURRENT_RELEASE["municipalities"]
-        assert events_by_uf["SC"] == CURRENT_RELEASE["scEvents"]
-        july_1991 = periods.index("1991-07")
-        assert not any(row[0] == july_1991 for row in rows)
 
     print(
         json.dumps(

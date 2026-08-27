@@ -1,6 +1,7 @@
 name: Validação contínua
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -29,6 +30,7 @@ jobs:
       - name: Baixar o código do repositório
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Preparar o Python
@@ -40,7 +42,13 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Verificar sintaxe dos scripts
-        run: python -m py_compile scripts/build_data.py scripts/validate_build.py
+        run: >-
+          python -m py_compile
+          scripts/build_data.py
+          scripts/check_atlas_update.py
+          scripts/prepare_atlas_update.py
+          scripts/sync_release_metadata.py
+          scripts/validate_build.py
 
       - name: Verificar sintaxe da aplicação
         run: node --check assets/js/app.js
@@ -48,5 +56,20 @@ jobs:
       - name: Validar integridade dos dados publicados
         run: python scripts/validate_build.py --data data --strict-current
 
+      - name: Comparar com a versão publicada
+        if: github.event_name != 'push'
+        run: |
+          git worktree add --detach /tmp/atlas-base origin/main
+          python -m scripts.prepare_atlas_update compare \
+            --current-data /tmp/atlas-base/data \
+            --candidate-data data \
+            --report-json /tmp/transition-report.json \
+            --release-record-dir docs/releases
+
+      - name: Confirmar documentação sincronizada
+        run: python scripts/sync_release_metadata.py --data data --readme README.md
+
       - name: Confirmar que a validação não alterou arquivos
-        run: git diff --exit-code
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"

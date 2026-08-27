@@ -1,10 +1,12 @@
 # Desastres no tempo
 
+<!-- atlas-release:start -->
 Mapa espaço-temporal dos registros oficiais de desastres no Brasil, com cobertura nacional e todos os meses de janeiro de 1991 a dezembro de 2025.
 
 ## Cobertura e metodologia
 
 A versão publicada usa a base consolidada v1.1 do Atlas Digital de Desastres no Brasil, de 06/08/2026. São **76.190 registros**, **420 meses contínuos**, **16 tipologias oficiais** e **5.573 municípios e unidades equivalentes** na malha cartográfica.
+<!-- atlas-release:end -->
 
 O total territorial reproduz integralmente a Malha Municipal 2025 do IBGE: 5.569 municípios, o Distrito Federal (Brasília), o Distrito Estadual de Fernando de Noronha e duas Áreas Estaduais Operacionais do Rio Grande do Sul (Lagoa dos Patos e Lagoa Mirim). Portanto, o rótulo público “municípios e unidades equivalentes” é uma forma resumida; as duas áreas operacionais não são municípios. Boa Esperança do Norte (MT), instalado em 2025, está entre os 5.569 municípios. Nenhuma dessas feições é removida da malha.
 
@@ -14,7 +16,7 @@ As decisões de tratamento, variáveis, validações, limitações e composiçã
 
 ## Decisão de arquitetura
 
-O CSV bruto do Atlas **não deve ser publicado nem lido pelo navegador**. A versão atual tem cerca de 86 MB, exige conversão de codificação e contém muito mais colunas do que o mapa usa. Isso faria cada visita repetir um processamento caro.
+O CSV bruto do Atlas **não deve ser publicado nem lido pelo navegador**. Ele é grande, exige conversão de codificação e contém muito mais colunas do que o mapa usa. Isso faria cada visita repetir um processamento caro.
 
 O repositório publica arquivos derivados e compactos:
 
@@ -38,11 +40,32 @@ O resultado público é mantido em `data/update-status.json` na branch técnica 
 
 Se o domínio, o nome do arquivo ou o formato da página não corresponderem ao padrão auditável esperado, a rotina não presume uma versão: publica o estado de falha, preserva a data da última verificação bem-sucedida e encerra a execução com erro para produzir um relatório no GitHub Actions.
 
+Quando uma nova versão é encontrada, outro job baixa o CSV temporariamente no servidor do GitHub, reconstrói os arquivos derivados e compara cada protocolo com a versão publicada. Nenhum registro existente pode desaparecer ou mudar de município, UF, tipologia ou data. Correções nos campos de danos humanos e prejuízos podem aumentar ou diminuir e são discriminadas no relatório.
+
+Se toda a validação for aprovada, a automação cria uma branch exclusiva e abre um pull request. Execuções posteriores reconhecem o PR já aberto e não criam duplicatas. O CSV bruto é apagado junto com o ambiente temporário; somente os dados derivados, o manifesto e o relatório científico entram no PR. A incorporação permanece obrigatoriamente manual.
+
+O fluxo completo é composto pelas seguintes etapas:
+
+1. consultar a página oficial de downloads e identificar a versão consolidada mais recente;
+2. publicar no site somente o estado da consulta e a data da última verificação;
+3. validar domínio, caminho, nome, versão e data do CSV anunciado;
+4. verificar se já existe branch ou pull request para a mesma versão;
+5. baixar o CSV em ambiente temporário, limitar seu tamanho e calcular o SHA-256;
+6. validar todas as linhas e reconstruir o resumo e os 27 arquivos estaduais;
+7. conferir períodos, tipologias, UFs, contagens e as 5.573 feições territoriais;
+8. comparar todos os protocolos com a versão publicada e interromper diante de remoção ou mudança de identidade;
+9. registrar cada correção de danos ou prejuízos com protocolo, campo, valores anterior e novo e diferença;
+10. gerar um relatório JSON para auditoria computacional e um relatório Markdown em texto legível;
+11. abrir uma branch e um pull request próprios e executar novamente os testes obrigatórios;
+12. aguardar a revisão e a incorporação manual, únicas ações que podem alterar os dados publicados.
+
+Cada atualização aprovada mantém permanentemente os dois relatórios em `docs/releases/`. O texto do pull request apresenta a síntese e aponta o arquivo Markdown integral quando o detalhamento ultrapassa o limite adequado para a descrição do GitHub. Em caso de erro, nenhum dado do site é trocado e os relatórios da tentativa permanecem disponíveis como artefato do GitHub Actions por 30 dias.
+
 ## Funcionalidades
 
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
 - indicador clicável no topo com versão, período, geração e estado da verificação do Atlas;
-- 420 meses contínuos, inclusive os meses sem registros;
+- série mensal contínua indicada no manifesto, inclusive os meses sem registros;
 - filtro territorial Brasil/UF;
 - 16 tipologias oficiais, cada uma com cor fixa;
 - cor municipal definida pela tipologia com mais danos humanos no mês;
@@ -70,12 +93,14 @@ Requisitos: Python 3 e `mapshaper` 0.6.113.
 python3 scripts/build_data.py \
   --atlas /caminho/BD_Atlas.csv \
   --output data \
-  --report build-report.json
+  --report build-report.json \
+  --source-url "https://atlasdigital.mdr.gov.br/arquivos/AAAA/BD_Atlas_..._Consolidado.csv" \
+  --version "vX.Y — DD/MM/AAAA"
 MAPSHAPER_BIN=mapshaper scripts/build_geography.sh /caminho/BR_Municipios_2025.shp data/geo
 python3 scripts/validate_build.py --data data --strict-current
 ```
 
-O CSV bruto é usado apenas como entrada local e não é incorporado ao repositório. A verificação semanal identifica novas versões e atualiza somente o aviso; a preparação automática dos novos dados e de seu pull request será acrescentada em uma etapa própria.
+O CSV bruto é usado apenas como entrada local e não é incorporado ao repositório. `source-url` e `version` são obrigatórios para impedir que uma base nova seja identificada silenciosamente como se fosse a anterior.
 
 Para testar localmente:
 
@@ -87,7 +112,7 @@ Abra `http://localhost:8000`. A página não funciona corretamente ao abrir o HT
 
 ## Fontes
 
-- Desastres: [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/) / MIDR, base consolidada v1.1 de 06/08/2026.
+- Desastres: [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/) / MIDR. A versão, a data e o SHA-256 da fonte constam no manifesto e no relatório de cada atualização.
 - Limites territoriais: [Malha Municipal 2025 do IBGE](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html).
 - Biblioteca cartográfica: Leaflet 1.9.4, incluída localmente sob licença BSD-2-Clause.
 - Imagens de satélite: Esri, Maxar, Earthstar Geographics e comunidade GIS.

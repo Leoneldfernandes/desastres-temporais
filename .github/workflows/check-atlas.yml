@@ -17,8 +17,14 @@ on:
     paths:
       - ".github/workflows/check-atlas.yml"
       - "data/manifest.json"
+      - "scripts/build_data.py"
       - "scripts/check_atlas_update.py"
+      - "scripts/prepare_atlas_update.py"
+      - "scripts/sync_release_metadata.py"
+      - "scripts/validate_build.py"
+      - "tests/test_build_data.py"
       - "tests/test_check_atlas_update.py"
+      - "tests/test_prepare_atlas_update.py"
 
 permissions:
   contents: read
@@ -55,6 +61,96 @@ jobs:
       - name: Exibir o resultado da consulta
         run: cat /tmp/update-status.json
 
+  dry-run-preparation:
+    name: Simular a preparação completa
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preparar o Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Ler a fonte atualmente identificada
+        id: release
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          from scripts.check_atlas_update import parse_release_url
+
+          manifest = json.loads(Path("data/manifest.json").read_text())
+          release = parse_release_url(manifest["sourceUrl"])
+          if manifest["version"] != release.label:
+              raise SystemExit("Versão do manifesto divergente do CSV.")
+          print(f"url={release.url}")
+          print(f"label={release.label}")
+          PY
+
+      - name: Baixar o CSV em ambiente temporário
+        env:
+          SOURCE_URL: ${{ steps.release.outputs.url }}
+        run: >-
+          python -m scripts.prepare_atlas_update download
+          --source-url "$SOURCE_URL"
+          --output /tmp/atlas.csv
+
+      - name: Reconstruir os dados sem publicar
+        id: dry_build
+        continue-on-error: true
+        env:
+          SOURCE_URL: ${{ steps.release.outputs.url }}
+          VERSION: ${{ steps.release.outputs.label }}
+        run: |
+          mkdir -p /tmp/atlas-dry-run/data
+          cp -a data/geo /tmp/atlas-dry-run/data/geo
+          cp data/update-status.json /tmp/atlas-dry-run/data/update-status.json
+          python scripts/build_data.py \
+            --atlas /tmp/atlas.csv \
+            --output /tmp/atlas-dry-run/data \
+            --report /tmp/build-report.json \
+            --source-url "$SOURCE_URL" \
+            --version "$VERSION"
+
+      - name: Exibir o relatório da reconstrução
+        if: always()
+        run: |
+          if [ -f /tmp/build-report.json ]; then
+            python -m json.tool /tmp/build-report.json
+          else
+            echo "O relatório não foi produzido."
+          fi
+
+      - name: Guardar o relatório da simulação
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atlas-dry-run-report
+          path: /tmp/build-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Validar e comparar a reconstrução
+        if: steps.dry_build.outcome == 'success'
+        run: |
+          python scripts/validate_build.py --data /tmp/atlas-dry-run/data --strict-current
+          python -m scripts.prepare_atlas_update compare \
+            --current-data data \
+            --candidate-data /tmp/atlas-dry-run/data \
+            --build-report /tmp/build-report.json \
+            --report-json /tmp/dry-run-report.json
+
+      - name: Sinalizar falha da reconstrução
+        if: steps.dry_build.outcome == 'failure'
+        run: exit 1
+
   publish-status:
     name: Publicar somente o estado da verificação
     if: github.event_name == 'schedule' || github.event_name == 'push'
@@ -62,6 +158,10 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    outputs:
+      status: ${{ steps.result.outputs.status }}
+      source_url: ${{ steps.result.outputs.source_url }}
+      version: ${{ steps.result.outputs.version }}
 
     steps:
       - name: Baixar o código da branch principal
@@ -102,6 +202,21 @@ jobs:
           from scripts.validate_build import validate_update_status;
           validate_update_status(Path('../status/data'))"
 
+      - name: Disponibilizar o resultado para a preparação
+        id: result
+        if: steps.validate.outcome == 'success'
+        working-directory: source
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          status = json.loads(Path("../status/data/update-status.json").read_text())
+          print(f"status={status['status']}")
+          print(f"source_url={status.get('availableSourceUrl') or ''}")
+          print(f"version={status.get('availableVersion') or ''}")
+          PY
+
       - name: Publicar o estado na branch técnica
         if: always() && steps.validate.outcome == 'success'
         working-directory: status
@@ -121,3 +236,188 @@ jobs:
           always() &&
           (steps.check.outcome == 'failure' || steps.validate.outcome == 'failure')
         run: exit 1
+
+  prepare-update:
+    name: Preparar e auditar a nova base
+    needs: publish-status
+    if: >-
+      needs.publish-status.result == 'success' &&
+      needs.publish-status.outputs.status == 'update-available'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      skip: ${{ steps.guard.outputs.skip }}
+      branch: ${{ steps.release.outputs.branch }}
+      title: ${{ steps.release.outputs.title }}
+      slug: ${{ steps.release.outputs.slug }}
+
+    steps:
+      - name: Baixar o código da branch principal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preparar o Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Validar os metadados da versão encontrada
+        id: release
+        env:
+          SOURCE_URL: ${{ needs.publish-status.outputs.source_url }}
+        run: >-
+          python -m scripts.prepare_atlas_update inspect
+          --source-url "$SOURCE_URL"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Impedir pull requests duplicados
+        id: guard
+        env:
+          BRANCH: ${{ steps.release.outputs.branch }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing_pr="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --head "$BRANCH" \
+            --json url \
+            --jq '.[0].url // ""')"
+          if [ -n "$existing_pr" ]; then
+            echo "Já existe um pull request para esta versão: $existing_pr"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "pr_url=$existing_pr" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "A branch da versão existe, mas não possui pull request aberto."
+            exit 1
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Preparar diretórios temporários
+        if: steps.guard.outputs.skip == 'false'
+        run: mkdir -p /tmp/atlas-candidate/data /tmp/atlas-artifact
+
+      - name: Baixar o CSV oficial temporariamente
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          SOURCE_URL: ${{ steps.release.outputs.url }}
+        run: >-
+          python -m scripts.prepare_atlas_update download
+          --source-url "$SOURCE_URL"
+          --output /tmp/atlas.csv
+
+      - name: Preservar a geografia publicada
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          cp -a data/geo /tmp/atlas-candidate/data/geo
+          cp data/update-status.json /tmp/atlas-candidate/data/update-status.json
+
+      - name: Gerar os arquivos derivados
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          SOURCE_URL: ${{ steps.release.outputs.url }}
+          VERSION: ${{ steps.release.outputs.label }}
+        run: >-
+          python scripts/build_data.py
+          --atlas /tmp/atlas.csv
+          --output /tmp/atlas-candidate/data
+          --report /tmp/atlas-artifact/build-report.json
+          --source-url "$SOURCE_URL"
+          --version "$VERSION"
+
+      - name: Validar a integridade da versão candidata
+        if: steps.guard.outputs.skip == 'false'
+        run: python scripts/validate_build.py --data /tmp/atlas-candidate/data --strict-current
+
+      - name: Comparar protocolo por protocolo
+        if: steps.guard.outputs.skip == 'false'
+        run: >-
+          python -m scripts.prepare_atlas_update compare
+          --current-data data
+          --candidate-data /tmp/atlas-candidate/data
+          --build-report /tmp/atlas-artifact/build-report.json
+          --report-json /tmp/atlas-artifact/update-report.json
+          --report-markdown /tmp/atlas-artifact/pr-body.md
+          --release-record-dir docs/releases
+
+      - name: Instalar somente os arquivos derivados aprovados
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          SLUG: ${{ steps.release.outputs.slug }}
+        run: |
+          cp /tmp/atlas-candidate/data/manifest.json data/manifest.json
+          cp /tmp/atlas-candidate/data/atlas-summary.json.gz data/atlas-summary.json.gz
+          cp -a /tmp/atlas-candidate/data/events/. data/events/
+          python scripts/sync_release_metadata.py --data data --readme README.md
+          tar -czf /tmp/atlas-artifact/package.tar.gz \
+            README.md \
+            docs/metodologia.md \
+            data/manifest.json \
+            data/atlas-summary.json.gz \
+            data/events \
+            "docs/releases/atlas-$SLUG.json" \
+            "docs/releases/atlas-$SLUG.md"
+
+      - name: Guardar relatório e pacote para o próximo job
+        if: always() && steps.guard.outputs.skip == 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atlas-update-${{ steps.release.outputs.slug }}
+          path: /tmp/atlas-artifact/
+          if-no-files-found: warn
+          retention-days: 30
+
+  open-update-pr:
+    name: Abrir pull request da nova base
+    needs: prepare-update
+    if: >-
+      needs.prepare-update.result == 'success' &&
+      needs.prepare-update.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Baixar o código da branch principal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Baixar o pacote aprovado
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: atlas-update-${{ needs.prepare-update.outputs.slug }}
+          path: /tmp/atlas-artifact
+
+      - name: Criar a branch e o pull request
+        env:
+          BRANCH: ${{ needs.prepare-update.outputs.branch }}
+          TITLE: ${{ needs.prepare-update.outputs.title }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar -xzf /tmp/atlas-artifact/package.tar.gz
+          git switch -c "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/metodologia.md docs/releases \
+            data/manifest.json data/atlas-summary.json.gz data/events
+          if git diff --cached --quiet; then
+            echo "A versão candidata não produziu alterações publicáveis."
+            exit 1
+          fi
+          git commit -m "$TITLE"
+          git push origin "HEAD:$BRANCH"
+          pr_url="$(gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$BRANCH" \
+            --title "$TITLE" \
+            --body-file /tmp/atlas-artifact/pr-body.md)"
+          echo "$pr_url" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run validate.yml --ref "$BRANCH"
