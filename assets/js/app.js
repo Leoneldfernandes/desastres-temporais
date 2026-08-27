@@ -765,6 +765,7 @@ function setPeriod(index) {
   state.currentPeriod = bounded;
   const period = state.periods[bounded];
   const label = periodLabel(period);
+  const numericLabel = numericPeriodLabel(period);
   const { aggregates, tableRows } = calculatePeriod(bounded);
   state.currentAggregates = aggregates;
 
@@ -773,7 +774,7 @@ function setPeriod(index) {
   updateVirtualTable(tableRows);
 
   dom.periodSlider.value = String(bounded);
-  dom.displayPeriod.textContent = label;
+  dom.displayPeriod.textContent = numericLabel;
   dom.kpiPeriod.textContent = label;
   dom.resultsPeriod.textContent = label;
 
@@ -1174,8 +1175,8 @@ async function initialize() {
     renderGeography(geometry, true);
 
     dom.periodSlider.max = String(state.periods.length - 1);
-    dom.minPeriod.textContent = periodLabel(state.periods[0], true);
-    dom.maxPeriod.textContent = periodLabel(state.periods.at(-1), true);
+    dom.minPeriod.textContent = numericPeriodLabel(state.periods[0]);
+    dom.maxPeriod.textContent = numericPeriodLabel(state.periods.at(-1));
     state.ready = true;
     setPeriod(0);
     renderUpdateStatus();
