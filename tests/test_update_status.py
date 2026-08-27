@@ -65,6 +65,17 @@ class UpdateStatusTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             validate_update_status(self.data)
 
+    def test_available_update_rejects_unofficial_source(self) -> None:
+        self.write_status(
+            status="update-available",
+            checkedAt="2026-08-24T11:00:00+00:00",
+            availableVersion="v1.2 — 24/08/2026",
+            availableSourceUrl="https://example.org/base-inventada.csv",
+            detectedAt="2026-08-24T11:00:00+00:00",
+        )
+        with self.assertRaises(AssertionError):
+            validate_update_status(self.data)
+
 
 if __name__ == "__main__":
     unittest.main()
