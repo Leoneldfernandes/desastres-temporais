@@ -19,7 +19,7 @@ O CSV bruto do Atlas **não deve ser publicado nem lido pelo navegador**. A vers
 O repositório publica arquivos derivados e compactos:
 
 - `data/atlas-summary.json.gz`: resumo mensal usado pelo mapa, KPIs e tabela;
-- `data/update-status.json`: estado da verificação de novas versões do Atlas;
+- `data/update-status.json`: contrato e estado inicial da verificação de novas versões do Atlas;
 - `data/geo/municipios-br.geojson.gz`: malha simplificada das 5.573 feições territoriais, carregada na abertura;
 - `data/geo/uf/*.json.gz`: malhas estaduais mais detalhadas, carregadas somente ao escolher uma UF;
 - `data/events/*.json.gz`: registros completos separados por UF, carregados somente ao clicar em um município.
@@ -29,6 +29,14 @@ Na primeira abertura, o navegador transfere aproximadamente 3,3 MB de dados comp
 O manifesto é revalidado a cada abertura. Sua data de geração (`generatedAt`) é acrescentada aos endereços dos arquivos derivados como versão de cache. Uma nova publicação força o navegador a buscar o conjunto novo, enquanto os acessos seguintes à mesma versão continuam aproveitando o cache.
 
 Os arquivos da interface (`app.css` e `app.js`) também usam uma versão de cache baseada nos 12 primeiros caracteres de seu SHA-256. Um teste automatizado exige que o endereço versionado seja atualizado sempre que o conteúdo desses arquivos mudar. Assim, cada nova interface é baixada uma única vez e as visitas seguintes continuam aproveitando o cache normal do navegador.
+
+## Verificação semanal do Atlas
+
+Às segundas-feiras, às 8h no fuso `America/Sao_Paulo`, o GitHub consulta a [página oficial de downloads do Atlas](https://atlasdigital.mdr.gov.br/paginas/downloads.xhtml). A rotina lê somente o HTML da página, localiza o CSV consolidado e compara seu endereço e sua versão com a fonte registrada no manifesto. O arquivo completo não é baixado nessa etapa.
+
+O resultado público é mantido em `data/update-status.json` na branch técnica `atlas-status`, separada da branch principal protegida. O site lê esse pequeno arquivo diretamente e pode atualizar somente o aviso. Quando uma nova base é encontrada, os dados do mapa permanecem inalterados até a validação e a aprovação de um pull request específico.
+
+Se o domínio, o nome do arquivo ou o formato da página não corresponderem ao padrão auditável esperado, a rotina não presume uma versão: publica o estado de falha, preserva a data da última verificação bem-sucedida e encerra a execução com erro para produzir um relatório no GitHub Actions.
 
 ## Funcionalidades
 
@@ -67,7 +75,7 @@ MAPSHAPER_BIN=mapshaper scripts/build_geography.sh /caminho/BR_Municipios_2025.s
 python3 scripts/validate_build.py --data data --strict-current
 ```
 
-O CSV bruto é usado apenas como entrada local e não é incorporado ao repositório. A publicação automática de uma nova versão será acrescentada em uma etapa própria; atualmente, somente a validação contínua está ativa no GitHub Actions.
+O CSV bruto é usado apenas como entrada local e não é incorporado ao repositório. A verificação semanal identifica novas versões e atualiza somente o aviso; a preparação automática dos novos dados e de seu pull request será acrescentada em uma etapa própria.
 
 Para testar localmente:
 
