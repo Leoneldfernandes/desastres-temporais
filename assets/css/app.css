@@ -752,7 +752,7 @@ input:focus-visible,
 .share-view-button {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   width: 112px;
   min-height: 36px;
   gap: 4px;
@@ -765,7 +765,7 @@ input:focus-visible,
   font-size: 0.61rem;
   font-weight: 700;
   line-height: 1.15;
-  text-align: left;
+  text-align: center;
   white-space: normal;
 }
 
@@ -778,7 +778,7 @@ input:focus-visible,
 
 .share-view-icon { flex: 0 0 auto; }
 
-#shareViewLabel { flex: 1; }
+#shareViewLabel { flex: 0 1 auto; }
 
 .button,
 .icon-button {
