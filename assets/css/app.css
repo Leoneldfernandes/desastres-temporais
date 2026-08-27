@@ -117,6 +117,27 @@ input:focus-visible,
   white-space: nowrap;
 }
 
+.author-credit {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.2;
+}
+
+.author-credit a {
+  color: var(--cyan);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.author-credit a:hover { text-decoration: underline; }
+
+.author-credit a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
 .eyebrow {
   margin: 0 0 3px;
   color: var(--muted);
