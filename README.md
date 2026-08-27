@@ -25,6 +25,8 @@ O repositório publica arquivos derivados e compactos:
 
 Na primeira abertura, o navegador transfere aproximadamente 3,3 MB de dados compactados. A descompactação acontece automaticamente no navegador. Os detalhes são baixados sob demanda e ficam no cache normal. Assim, o Brasil inteiro é viável no GitHub Pages sem servidor, banco de dados ou Google Drive.
 
+O manifesto é revalidado a cada abertura. Sua data de geração (`generatedAt`) é acrescentada aos endereços dos arquivos derivados como versão de cache. Uma nova publicação força o navegador a buscar o conjunto novo, enquanto os acessos seguintes à mesma versão continuam aproveitando o cache.
+
 ## Funcionalidades
 
 - 5.573 municípios e unidades equivalentes visíveis desde a abertura;
