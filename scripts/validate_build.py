@@ -8,6 +8,7 @@ import gzip
 import json
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 CURRENT_RELEASE = {
@@ -57,7 +58,9 @@ def validate_update_status(data: Path) -> None:
 
     if payload["status"] == "update-available":
         assert payload.get("availableVersion")
-        assert str(payload.get("availableSourceUrl", "")).startswith("https://")
+        available_url = urlsplit(str(payload.get("availableSourceUrl", "")))
+        assert available_url.scheme == "https"
+        assert available_url.hostname == "atlasdigital.mdr.gov.br"
         assert date.fromisoformat(str(payload["detectedAt"])[:10])
 
 
