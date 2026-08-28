@@ -29,6 +29,11 @@ class CartographicControlTests(unittest.TestCase):
         self.assertIn(".leaflet-bottom.leaflet-right", self.styles)
         self.assertIn(".leaflet-control-scale-line", self.styles)
         self.assertIn("--map-bottom-controls-offset", self.styles)
+        self.assertRegex(
+            self.styles,
+            r"\.leaflet-bottom\.leaflet-right\s*\{\s*bottom: 0;",
+        )
+        self.assertIn(".leaflet-control-scale {", self.styles)
         self.assertIn("timelineBounds.top", self.script)
         self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
 

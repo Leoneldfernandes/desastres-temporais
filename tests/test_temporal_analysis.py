@@ -125,7 +125,18 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn("function syncMapControlOffset()", self.script)
         self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
         self.assertIn("--map-bottom-controls-offset", self.script)
-        self.assertIn("bottom: var(--map-bottom-controls-offset, 118px)", self.styles)
+        self.assertRegex(
+            self.styles,
+            r"\.leaflet-bottom\.leaflet-right\s*\{\s*bottom: 0;",
+        )
+        self.assertRegex(
+            self.styles,
+            r"(?s)\.leaflet-control-scale\s*\{.*?bottom: var\(--map-bottom-controls-offset, 118px\)",
+        )
+        self.assertRegex(
+            self.styles,
+            r"(?s)\.leaflet-control-attribution\s*\{.*?margin: 0 !important;",
+        )
 
     def test_chart_is_keyboard_accessible_and_fullscreen_compatible(self) -> None:
         self.assertIn('role="slider"', self.page)
