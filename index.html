@@ -10,9 +10,9 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=7ea7ad018830">
+    <link rel="stylesheet" href="assets/css/app.css?v=6951b954590c">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=3565e70052da"></script>
+    <script defer src="assets/js/app.js?v=a0c6cf91e93d"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -246,6 +246,77 @@
         </div>
 
         <section class="timeline" aria-label="Linha temporal">
+          <div class="temporal-analysis-heading">
+            <div>
+              <strong>Evolução temporal</strong>
+              <span id="temporalContextLabel">Panorama geral · Brasil · 16 tipologias</span>
+            </div>
+            <button
+              class="temporal-analysis-toggle"
+              id="toggleTemporalAnalysis"
+              type="button"
+              aria-expanded="true"
+              aria-controls="temporalAnalysis"
+            >Recolher gráfico</button>
+          </div>
+
+          <div class="temporal-analysis" id="temporalAnalysis">
+            <div class="temporal-analysis-controls">
+              <div class="temporal-control-group" role="group" aria-label="Nível da análise temporal">
+                <button
+                  class="temporal-option is-active"
+                  id="temporalGeneral"
+                  type="button"
+                  data-temporal-context="general"
+                  aria-pressed="true"
+                >Panorama geral</button>
+                <button
+                  class="temporal-option"
+                  id="temporalMunicipality"
+                  type="button"
+                  data-temporal-context="municipality"
+                  aria-pressed="false"
+                  disabled
+                >Município selecionado</button>
+              </div>
+              <div class="temporal-control-group temporal-metric-options" role="group" aria-label="Indicador temporal">
+                <button
+                  class="temporal-option is-active"
+                  type="button"
+                  data-temporal-metric="events"
+                  aria-pressed="true"
+                >Ocorrências</button>
+                <button
+                  class="temporal-option"
+                  type="button"
+                  data-temporal-metric="human"
+                  aria-pressed="false"
+                >Danos humanos</button>
+                <button
+                  class="temporal-option"
+                  type="button"
+                  data-temporal-metric="loss"
+                  aria-pressed="false"
+                >Prejuízos econômicos</button>
+              </div>
+            </div>
+
+            <div class="temporal-chart-wrap">
+              <svg
+                id="temporalChart"
+                role="slider"
+                tabindex="0"
+                aria-label="Selecionar mês no gráfico temporal"
+                aria-valuemin="0"
+                aria-valuemax="419"
+                aria-valuenow="0"
+                aria-valuetext="Janeiro de 1991"
+              ></svg>
+              <div class="temporal-chart-tooltip" id="temporalChartTooltip" aria-hidden="true"></div>
+            </div>
+            <p class="temporal-chart-status" id="temporalChartStatus" aria-live="polite"></p>
+          </div>
+
           <div class="timeline-topline">
             <div class="period-share">
               <div class="period-display">

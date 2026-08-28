@@ -44,7 +44,8 @@ select { color: inherit; }
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
-#map:focus-visible {
+#map:focus-visible,
+#temporalChart:focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
@@ -1040,6 +1041,224 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   backdrop-filter: blur(12px);
 }
 
+.timeline.is-analysis-expanded { max-width: 900px; }
+
+.temporal-analysis-heading {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -3px 0 9px;
+}
+
+.temporal-analysis-heading strong,
+.temporal-analysis-heading span { display: block; }
+
+.temporal-analysis-heading strong {
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+.temporal-analysis-heading span {
+  max-width: min(560px, 66vw);
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.temporal-analysis-toggle,
+.temporal-option {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.temporal-analysis-toggle {
+  min-height: 31px;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  font-size: 0.68rem;
+}
+
+.temporal-analysis-toggle:hover,
+.temporal-option:hover:not(:disabled) {
+  border-color: rgba(66, 214, 232, 0.55);
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.temporal-analysis[hidden] { display: none; }
+
+.temporal-analysis {
+  margin: 0 0 10px;
+  padding: 9px 10px 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(5, 14, 25, 0.78);
+}
+
+.temporal-analysis-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.temporal-control-group {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.temporal-metric-options { justify-content: flex-end; }
+
+.temporal-option {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 0.66rem;
+}
+
+.temporal-option.is-active {
+  border-color: rgba(66, 214, 232, 0.78);
+  background: rgba(15, 71, 91, 0.88);
+  color: #effcff;
+}
+
+.temporal-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.temporal-chart-wrap {
+  position: relative;
+  height: 158px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #071522;
+}
+
+#temporalChart {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.temporal-chart-frame {
+  fill: #071522;
+  stroke: rgba(148, 163, 184, 0.2);
+}
+
+.temporal-grid-line {
+  stroke: rgba(148, 163, 184, 0.13);
+  stroke-width: 1;
+}
+
+.temporal-axis-label {
+  fill: var(--muted);
+  font-size: 0.68rem;
+}
+
+.temporal-axis-title {
+  fill: #c9d8e3;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.temporal-area {
+  fill: rgba(8, 184, 206, 0.22);
+  stroke: none;
+}
+
+.temporal-line {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.temporal-current-guide {
+  stroke: var(--gold);
+  stroke-width: 1.8;
+}
+
+.temporal-current-marker {
+  fill: var(--gold);
+  stroke: #071522;
+  stroke-width: 2;
+}
+
+.temporal-hover-guide {
+  stroke: rgba(238, 246, 251, 0.68);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.temporal-chart-hit {
+  fill: transparent;
+  cursor: crosshair;
+  pointer-events: all;
+}
+
+.temporal-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  max-width: min(230px, 48%);
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: rgba(8, 28, 45, 0.96);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.temporal-chart-tooltip strong,
+.temporal-chart-tooltip span,
+.temporal-chart-tooltip small { display: block; }
+
+.temporal-chart-tooltip strong {
+  color: var(--text);
+  font-size: 0.68rem;
+}
+
+.temporal-chart-tooltip span {
+  margin-top: 2px;
+  color: var(--cyan);
+  font-size: 0.71rem;
+  font-weight: 750;
+}
+
+.temporal-chart-tooltip small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.temporal-chart-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.map-stage.temporal-analysis-open .leaflet-bottom.leaflet-right { bottom: 362px; }
+
 .timeline-topline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -1575,6 +1794,36 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     left: 8px;
     padding: 11px;
   }
+
+  .timeline.is-analysis-expanded {
+    max-height: calc(70dvh - 18px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .temporal-analysis-heading {
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .temporal-analysis-heading span { max-width: 52vw; }
+
+  .temporal-analysis-toggle { min-height: 44px; }
+
+  .temporal-analysis-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .temporal-metric-options { justify-content: flex-start; }
+
+  .temporal-option { min-height: 44px; }
+
+  .temporal-chart-wrap { height: 172px; }
+
+  .temporal-chart-tooltip { max-width: 58%; }
+
+  .map-stage.temporal-analysis-open .leaflet-bottom.leaflet-right { display: none; }
 
   .map-tools {
     top: 8px;

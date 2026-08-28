@@ -71,6 +71,24 @@ const EVENT = Object.freeze({
   privateLoss: 16,
 });
 
+const TEMPORAL_METRICS = Object.freeze({
+  events: {
+    label: "Ocorrências",
+    axisLabel: "Ocorrências (nº)",
+    urlValue: "ocorrencias",
+  },
+  human: {
+    label: "Danos humanos",
+    axisLabel: "Danos humanos (pessoas)",
+    urlValue: "danos",
+  },
+  loss: {
+    label: "Prejuízos econômicos",
+    axisLabel: "Prejuízos econômicos (R$)",
+    urlValue: "prejuizos",
+  },
+});
+
 const ROW_HEIGHT = 42;
 const TABLE_HEADER_HEIGHT = 35;
 const EMPTY_STYLE = Object.freeze({
@@ -154,6 +172,14 @@ const dom = Object.fromEntries(
     "maxPeriod",
     "periodSlider",
     "playbackMessage",
+    "toggleTemporalAnalysis",
+    "temporalAnalysis",
+    "temporalContextLabel",
+    "temporalGeneral",
+    "temporalMunicipality",
+    "temporalChart",
+    "temporalChartTooltip",
+    "temporalChartStatus",
     "resultsPeriod",
     "resultCount",
     "resultsViewport",
@@ -213,6 +239,15 @@ const state = {
   urlSyncReady: false,
   shareFeedbackTimer: null,
   pseudoFullscreen: false,
+  temporalContext: "general",
+  temporalMetric: "events",
+  temporalMunicipalityCode: null,
+  temporalSeries: [],
+  temporalExpanded: true,
+  temporalChartGeometry: null,
+  temporalHoverIndex: null,
+  temporalFrame: null,
+  restoringView: false,
 };
 
 const mapRenderer = L.canvas({ padding: 0.45, tolerance: 5 });
@@ -380,7 +415,41 @@ function viewStateFromUrl() {
       ? requestedLocatedMunicipality
       : null;
 
-  return { uf, periodIndex, types, municipalityCode, locatedMunicipalityCode };
+  const requestedHistoricalMunicipality = String(params.get("historico") || "");
+  const historicalMunicipality = state.municipalityByCode.get(requestedHistoricalMunicipality);
+  const historicalMunicipalityCode =
+    historicalMunicipality && (uf === "BR" || historicalMunicipality.uf === uf)
+      ? requestedHistoricalMunicipality
+      : null;
+  const temporalMunicipalityCode =
+    historicalMunicipalityCode || locatedMunicipalityCode || municipalityCode;
+
+  const requestedMetric = String(params.get("indicador") || "");
+  const temporalMetric =
+    Object.entries(TEMPORAL_METRICS).find(([, definition]) => definition.urlValue === requestedMetric)?.[0] ||
+    "events";
+  const requestedTemporalContext = params.get("serie");
+  const temporalContext =
+    temporalMunicipalityCode && requestedTemporalContext !== "geral" ? "municipality" : "general";
+  const requestedGraphState = params.get("grafico");
+  const temporalExpanded =
+    requestedGraphState === "aberto"
+      ? true
+      : requestedGraphState === "fechado"
+        ? false
+        : !window.matchMedia("(max-width: 760px)").matches;
+
+  return {
+    uf,
+    periodIndex,
+    types,
+    municipalityCode,
+    locatedMunicipalityCode,
+    temporalMunicipalityCode,
+    temporalMetric,
+    temporalContext,
+    temporalExpanded,
+  };
 }
 
 function applyTypeSelection(typeIds) {
@@ -414,6 +483,16 @@ function syncViewUrl() {
   } else {
     url.searchParams.delete("localizar");
   }
+  if (state.temporalMunicipalityCode) {
+    url.searchParams.set("historico", state.temporalMunicipalityCode);
+    url.searchParams.set("serie", state.temporalContext === "municipality" ? "municipio" : "geral");
+  } else {
+    url.searchParams.delete("historico");
+    url.searchParams.delete("serie");
+  }
+  if (state.temporalMetric === "events") url.searchParams.delete("indicador");
+  else url.searchParams.set("indicador", TEMPORAL_METRICS[state.temporalMetric].urlValue);
+  url.searchParams.set("grafico", state.temporalExpanded ? "aberto" : "fechado");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -854,6 +933,296 @@ function sumAggregates(aggregates) {
   return totals;
 }
 
+function emptyTemporalEntry() {
+  return {
+    events: 0,
+    human: 0,
+    publicLoss: 0,
+    privateLoss: 0,
+  };
+}
+
+function buildTemporalSeries() {
+  const series = Array.from({ length: state.periods.length }, emptyTemporalEntry);
+  const municipalityMode = state.temporalContext === "municipality";
+  const municipalityCode = state.temporalMunicipalityCode;
+
+  for (let periodIndex = 0; periodIndex < state.summaryByPeriod.length; periodIndex += 1) {
+    const entry = series[periodIndex];
+    for (const row of state.summaryByPeriod[periodIndex]) {
+      if (!state.activeTypes.has(row[SUMMARY.type])) continue;
+      const code = String(row[SUMMARY.code]);
+      const meta = state.municipalityByCode.get(code);
+      if (!meta) continue;
+      if (municipalityMode) {
+        if (!municipalityCode || code !== municipalityCode) continue;
+      } else if (state.scopeUF !== "BR" && meta.uf !== state.scopeUF) {
+        continue;
+      }
+
+      entry.events += row[SUMMARY.events];
+      entry.human += row[SUMMARY.human];
+      entry.publicLoss += row[SUMMARY.publicLoss];
+      entry.privateLoss += row[SUMMARY.privateLoss];
+    }
+  }
+  return series;
+}
+
+function temporalEntryValue(entry, metric = state.temporalMetric) {
+  if (!entry) return 0;
+  if (metric === "loss") return entry.publicLoss + entry.privateLoss;
+  return entry[metric];
+}
+
+function temporalAxisValue(value) {
+  if (state.temporalMetric === "loss") return formatCurrency.format(value);
+  return formatCompact.format(value);
+}
+
+function temporalContextText() {
+  const selectedCount = state.activeTypes.size;
+  const typeText =
+    selectedCount === 0
+      ? "nenhuma tipologia"
+      : `${selectedCount} ${selectedCount === 1 ? "tipologia" : "tipologias"}`;
+  if (state.temporalContext === "municipality" && state.temporalMunicipalityCode) {
+    const meta = state.municipalityByCode.get(state.temporalMunicipalityCode);
+    if (meta) return `Histórico municipal · ${meta.name} — ${meta.uf} · ${typeText}`;
+  }
+  return `Panorama geral · ${UF_NAMES[state.scopeUF]} · ${typeText}`;
+}
+
+function syncTemporalControls() {
+  const municipality = state.temporalMunicipalityCode
+    ? state.municipalityByCode.get(state.temporalMunicipalityCode)
+    : null;
+  dom.temporalMunicipality.disabled = !municipality;
+  dom.temporalMunicipality.textContent = municipality
+    ? `${municipality.name} — ${municipality.uf}`
+    : "Município selecionado";
+
+  for (const button of [dom.temporalGeneral, dom.temporalMunicipality]) {
+    const active = button.dataset.temporalContext === state.temporalContext;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  for (const button of document.querySelectorAll("[data-temporal-metric]")) {
+    const active = button.dataset.temporalMetric === state.temporalMetric;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  dom.temporalContextLabel.textContent = temporalContextText();
+}
+
+function setTemporalAnalysisExpanded(expanded, syncUrl = true) {
+  state.temporalExpanded = Boolean(expanded);
+  dom.temporalAnalysis.hidden = !state.temporalExpanded;
+  dom.toggleTemporalAnalysis.setAttribute("aria-expanded", String(state.temporalExpanded));
+  dom.toggleTemporalAnalysis.textContent = state.temporalExpanded
+    ? "Recolher gráfico"
+    : "Abrir análise temporal";
+  dom.mapStage.classList.toggle("temporal-analysis-open", state.temporalExpanded);
+  dom.toggleTemporalAnalysis.closest(".timeline").classList.toggle(
+    "is-analysis-expanded",
+    state.temporalExpanded
+  );
+  if (state.temporalExpanded) window.requestAnimationFrame(drawTemporalChart);
+  if (syncUrl) syncViewUrl();
+}
+
+function setTemporalMetric(metric) {
+  if (!Object.hasOwn(TEMPORAL_METRICS, metric) || metric === state.temporalMetric) return;
+  state.temporalMetric = metric;
+  syncTemporalControls();
+  drawTemporalChart();
+  syncViewUrl();
+}
+
+function setTemporalContext(context) {
+  if (context === "municipality" && !state.temporalMunicipalityCode) return;
+  const nextContext = context === "municipality" ? "municipality" : "general";
+  if (nextContext === state.temporalContext) return;
+  state.temporalContext = nextContext;
+  refreshTemporalSeries();
+  syncViewUrl();
+}
+
+function setTemporalMunicipality(code, select = true) {
+  const nextCode = code && state.municipalityByCode.has(String(code)) ? String(code) : null;
+  state.temporalMunicipalityCode = nextCode;
+  if (select && nextCode) state.temporalContext = "municipality";
+  if (!nextCode && state.temporalContext === "municipality") state.temporalContext = "general";
+  if (state.ready) refreshTemporalSeries();
+  else syncTemporalControls();
+  syncViewUrl();
+}
+
+function refreshTemporalSeries() {
+  if (!state.ready) return;
+  state.temporalSeries = buildTemporalSeries();
+  syncTemporalControls();
+  drawTemporalChart();
+}
+
+function temporalTooltipContent(periodIndex) {
+  const entry = state.temporalSeries[periodIndex] || emptyTemporalEntry();
+  const value = temporalEntryValue(entry);
+  const period = periodLabel(state.periods[periodIndex]);
+  let valueText;
+  let detailText = "";
+
+  if (entry.events <= 0) {
+    valueText = "Sem ocorrência";
+    detailText = "Nenhum evento corresponde aos filtros deste mês.";
+  } else if (state.temporalMetric !== "events" && value <= 0) {
+    valueText = "Sem valor positivo registrado";
+    detailText = `${formatInteger.format(entry.events)} ${entry.events === 1 ? "ocorrência" : "ocorrências"} no mês.`;
+  } else if (state.temporalMetric === "events") {
+    valueText = `${formatInteger.format(value)} ${value === 1 ? "ocorrência" : "ocorrências"}`;
+  } else if (state.temporalMetric === "human") {
+    valueText = `${formatInteger.format(value)} danos humanos`;
+  } else {
+    valueText = formatCurrency.format(value);
+    detailText = `Público: ${formatCurrency.format(entry.publicLoss)} · Privado: ${formatCurrency.format(
+      entry.privateLoss
+    )}`;
+  }
+  return { period, valueText, detailText };
+}
+
+function renderTemporalTooltip(periodIndex, announce = false) {
+  const content = temporalTooltipContent(periodIndex);
+  const title = document.createElement("strong");
+  title.textContent = content.period;
+  const value = document.createElement("span");
+  value.textContent = content.valueText;
+  dom.temporalChartTooltip.replaceChildren(title, value);
+  if (content.detailText) {
+    const detail = document.createElement("small");
+    detail.textContent = content.detailText;
+    dom.temporalChartTooltip.append(detail);
+  }
+  if (announce) {
+    dom.temporalChartStatus.textContent = `${content.period}: ${content.valueText}${
+      content.detailText ? `. ${content.detailText}` : ""
+    }`;
+  }
+}
+
+function updateTemporalChartSelection() {
+  const geometry = state.temporalChartGeometry;
+  if (!geometry || !state.temporalSeries.length) return;
+  const periodIndex = state.currentPeriod;
+  const entry = state.temporalSeries[periodIndex] || emptyTemporalEntry();
+  const value = temporalEntryValue(entry);
+  const x = geometry.left + (periodIndex / Math.max(1, state.periods.length - 1)) * geometry.plotWidth;
+  const y = geometry.top + geometry.plotHeight - (value / geometry.maxValue) * geometry.plotHeight;
+  const guide = dom.temporalChart.querySelector("#temporalCurrentGuide");
+  const marker = dom.temporalChart.querySelector("#temporalCurrentMarker");
+  if (guide) {
+    guide.setAttribute("x1", x.toFixed(2));
+    guide.setAttribute("x2", x.toFixed(2));
+  }
+  if (marker) {
+    marker.setAttribute("cx", x.toFixed(2));
+    marker.setAttribute("cy", y.toFixed(2));
+  }
+  dom.temporalChart.setAttribute("aria-valuenow", String(periodIndex));
+  dom.temporalChart.setAttribute("aria-valuetext", periodLabel(state.periods[periodIndex]));
+  renderTemporalTooltip(periodIndex, !state.playbackWanted);
+}
+
+function drawTemporalChart() {
+  cancelAnimationFrame(state.temporalFrame);
+  state.temporalFrame = window.requestAnimationFrame(() => {
+    if (!state.temporalExpanded || !state.temporalSeries.length) return;
+    const container = dom.temporalChart.parentElement;
+    const width = Math.max(280, container.clientWidth);
+    const height = Math.max(150, container.clientHeight);
+    const left = width < 480 ? 62 : 72;
+    const right = 14;
+    const top = 18;
+    const bottom = 28;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const values = state.temporalSeries.map((entry) => temporalEntryValue(entry));
+    const observedMaximum = Math.max(0, ...values);
+    const maxValue = observedMaximum > 0 ? observedMaximum * 1.04 : 1;
+    const x = (index) => left + (index / Math.max(1, values.length - 1)) * plotWidth;
+    const y = (value) => top + plotHeight - (value / maxValue) * plotHeight;
+    const linePath = values
+      .map((value, index) => `${index === 0 ? "M" : "L"}${x(index).toFixed(2)} ${y(value).toFixed(2)}`)
+      .join(" ");
+    const areaPath = `M${left} ${top + plotHeight} ${linePath.replace(/^M/, "L")} L${
+      left + plotWidth
+    } ${top + plotHeight} Z`;
+    const lastPeriodIndex = state.periods.length - 1;
+    const tickCount = width < 480 ? 4 : 5;
+    const xTicks = Array.from({ length: tickCount }, (_, index) =>
+      Math.round((index / (tickCount - 1)) * lastPeriodIndex)
+    );
+    const yTicks = [0, 0.5, 1];
+
+    state.temporalChartGeometry = { width, left, top, plotWidth, plotHeight, maxValue };
+    dom.temporalChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    dom.temporalChart.innerHTML = `
+      <rect class="temporal-chart-frame" x="${left}" y="${top}" width="${plotWidth}" height="${plotHeight}"></rect>
+      ${yTicks
+        .map((tick) => {
+          const tickY = top + plotHeight - tick * plotHeight;
+          return `<line class="temporal-grid-line" x1="${left}" y1="${tickY}" x2="${
+            left + plotWidth
+          }" y2="${tickY}"></line><text class="temporal-axis-label" x="${left - 8}" y="${
+            tickY + 4
+          }" text-anchor="end">${escapeHtml(temporalAxisValue(maxValue * tick))}</text>`;
+        })
+        .join("")}
+      <path class="temporal-area" d="${areaPath}"></path>
+      <path class="temporal-line" d="${linePath}"></path>
+      <line id="temporalCurrentGuide" class="temporal-current-guide" y1="${top}" y2="${
+        top + plotHeight
+      }"></line>
+      <circle id="temporalCurrentMarker" class="temporal-current-marker" r="4.5"></circle>
+      <line id="temporalHoverGuide" class="temporal-hover-guide" y1="${top}" y2="${
+        top + plotHeight
+      }" hidden></line>
+      ${xTicks
+        .map((tick, index) => {
+          const anchor = index === 0 ? "start" : index === xTicks.length - 1 ? "end" : "middle";
+          return `<text class="temporal-axis-label" x="${x(tick)}" y="${height - 8}" text-anchor="${anchor}">${escapeHtml(
+            state.periods[tick].slice(0, 4)
+          )}</text>`;
+        })
+        .join("")}
+      <text class="temporal-axis-title" x="12" y="13">${escapeHtml(
+        TEMPORAL_METRICS[state.temporalMetric].axisLabel
+      )}</text>
+      <rect class="temporal-chart-hit" x="${left}" y="${top}" width="${plotWidth}" height="${plotHeight}"></rect>`;
+    updateTemporalChartSelection();
+  });
+}
+
+function temporalIndexFromPointer(event) {
+  const geometry = state.temporalChartGeometry;
+  if (!geometry) return state.currentPeriod;
+  const bounds = dom.temporalChart.getBoundingClientRect();
+  const localX = ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * geometry.width;
+  const ratio = (localX - geometry.left) / geometry.plotWidth;
+  return Math.max(0, Math.min(state.periods.length - 1, Math.round(ratio * (state.periods.length - 1))));
+}
+
+function previewTemporalIndex(periodIndex) {
+  const guide = dom.temporalChart.querySelector("#temporalHoverGuide");
+  const geometry = state.temporalChartGeometry;
+  if (!guide || !geometry) return;
+  const x = geometry.left + (periodIndex / Math.max(1, state.periods.length - 1)) * geometry.plotWidth;
+  guide.hidden = false;
+  guide.setAttribute("x1", x.toFixed(2));
+  guide.setAttribute("x2", x.toFixed(2));
+  renderTemporalTooltip(periodIndex);
+}
+
 function renderIndicators(aggregates) {
   const totals = sumAggregates(aggregates);
   dom.kpiEvents.textContent = formatInteger.format(totals.events);
@@ -932,6 +1301,7 @@ function setPeriod(index) {
   dom.displayPeriod.textContent = numericLabel;
   dom.kpiPeriod.textContent = label;
   dom.resultsPeriod.textContent = label;
+  updateTemporalChartSelection();
 
   if (state.hovered && municipalityTooltip._map) {
     municipalityTooltip.setContent(tooltipContent(state.hovered.code));
@@ -1014,6 +1384,10 @@ function setLocatedMunicipality(code) {
     "aria-label",
     meta ? `Município localizado: ${meta.name} — ${meta.uf}` : "Localizar município"
   );
+  if (!state.restoringView) {
+    if (code) setTemporalMunicipality(code, true);
+    else if (state.temporalMunicipalityCode === previousCode) setTemporalMunicipality(null);
+  }
   syncViewUrl();
 }
 
@@ -1181,6 +1555,7 @@ function loadStateEvents(uf) {
 async function openMunicipalityDetail(code) {
   if (!state.ready) return;
   closeMapTooltip();
+  if (!state.restoringView) setTemporalMunicipality(code, true);
   const meta = state.municipalityByCode.get(code);
   const periodIndex = state.currentPeriod;
   const period = state.periods[periodIndex];
@@ -1360,6 +1735,9 @@ function syncPlaybackUi() {
     message = "Reprodução pausada durante a troca de recorte territorial.";
   }
   dom.playbackMessage.textContent = message;
+  if (!state.playbackWanted && state.ready && state.temporalSeries.length) {
+    renderTemporalTooltip(state.currentPeriod, true);
+  }
   if (canPlayback()) schedulePlayback(state.playbackSpeed);
 }
 
@@ -1387,6 +1765,7 @@ function geometryFileUrl(uf) {
 function refreshMapLayout() {
   window.requestAnimationFrame(() => {
     map.invalidateSize({ animate: false });
+    drawTemporalChart();
     window.setTimeout(() => map.invalidateSize({ animate: false }), 140);
   });
 }
@@ -1473,8 +1852,15 @@ async function changeScope(nextUf) {
       if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
       dom.municipalitySearchInput.value = "";
     }
+    const temporalMeta = state.temporalMunicipalityCode
+      ? state.municipalityByCode.get(state.temporalMunicipalityCode)
+      : null;
+    if (temporalMeta && nextUf !== "BR" && temporalMeta.uf !== nextUf) {
+      setTemporalMunicipality(null);
+    }
     renderGeography(geometry, true);
     dom.scopePill.textContent = UF_NAMES[nextUf];
+    refreshTemporalSeries();
     setPeriod(state.currentPeriod);
     renderUpdateStatus();
   } catch (error) {
@@ -1492,6 +1878,7 @@ function setAllTypes(checked) {
     input.checked = checked;
   }
   state.activeTypes = checked ? new Set(state.types.map((type) => type.id)) : new Set();
+  refreshTemporalSeries();
   setPeriod(state.currentPeriod);
 }
 
@@ -1501,6 +1888,7 @@ function handleTypeChange() {
       Number(input.value)
     )
   );
+  refreshTemporalSeries();
   setPeriod(state.currentPeriod);
 }
 
@@ -1531,6 +1919,33 @@ function bindEvents() {
   dom.previousPeriod.addEventListener("click", () => setPeriod(state.currentPeriod - 1));
   dom.nextPeriod.addEventListener("click", () => setPeriod(state.currentPeriod + 1));
   dom.shareView.addEventListener("click", shareCurrentView);
+  dom.toggleTemporalAnalysis.addEventListener("click", () => {
+    setTemporalAnalysisExpanded(!state.temporalExpanded);
+  });
+  dom.temporalAnalysis.addEventListener("click", (event) => {
+    const contextButton = event.target.closest("[data-temporal-context]");
+    if (contextButton) {
+      setTemporalContext(contextButton.dataset.temporalContext);
+      return;
+    }
+    const metricButton = event.target.closest("[data-temporal-metric]");
+    if (metricButton) setTemporalMetric(metricButton.dataset.temporalMetric);
+  });
+  dom.temporalChart.addEventListener("pointermove", (event) => {
+    state.temporalHoverIndex = temporalIndexFromPointer(event);
+    previewTemporalIndex(state.temporalHoverIndex);
+  });
+  dom.temporalChart.addEventListener("pointerleave", () => {
+    state.temporalHoverIndex = null;
+    const guide = dom.temporalChart.querySelector("#temporalHoverGuide");
+    if (guide) guide.hidden = true;
+    renderTemporalTooltip(state.currentPeriod);
+  });
+  dom.temporalChart.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    dom.temporalChart.focus({ preventScroll: true });
+    setPeriod(temporalIndexFromPointer(event));
+  });
   dom.toggleFullscreen.addEventListener("click", toggleMapFullscreen);
   dom.resetMapView.addEventListener("click", resetMapToScope);
   dom.municipalitySearchToggle.addEventListener("click", () => {
@@ -1635,6 +2050,7 @@ function bindEvents() {
     resizeTimer = window.setTimeout(() => {
       map.invalidateSize({ animate: false });
       renderVirtualRows();
+      drawTemporalChart();
     }, 120);
   });
 }
@@ -1659,6 +2075,7 @@ async function initialize() {
     buildTypeFilters();
     const initialView = viewStateFromUrl();
     applyTypeSelection(initialView.types);
+    state.restoringView = true;
 
     let initialGeometry = geometry;
     if (initialView.uf !== "BR") {
@@ -1667,14 +2084,22 @@ async function initialize() {
     }
     state.scopeUF = initialView.uf;
     state.locatedMunicipalityCode = initialView.locatedMunicipalityCode;
+    state.temporalMunicipalityCode = initialView.temporalMunicipalityCode;
+    state.temporalMetric = initialView.temporalMetric;
+    state.temporalContext = initialView.temporalContext;
+    state.currentPeriod = initialView.periodIndex;
     dom.ufSelector.value = initialView.uf;
     dom.scopePill.textContent = UF_NAMES[initialView.uf];
     renderGeography(initialGeometry, true);
 
     dom.periodSlider.max = String(state.periods.length - 1);
+    dom.temporalChart.setAttribute("aria-valuemax", String(state.periods.length - 1));
     dom.minPeriod.textContent = numericPeriodLabel(state.periods[0]);
     dom.maxPeriod.textContent = numericPeriodLabel(state.periods.at(-1));
     state.ready = true;
+    syncTemporalControls();
+    setTemporalAnalysisExpanded(initialView.temporalExpanded, false);
+    refreshTemporalSeries();
     setPeriod(initialView.periodIndex);
     state.urlSyncReady = true;
     syncViewUrl();
@@ -1687,9 +2112,11 @@ async function initialize() {
     if (initialView.municipalityCode) {
       await openMunicipalityDetail(initialView.municipalityCode);
     }
+    state.restoringView = false;
 
     requestAnimationFrame(() => {
       map.invalidateSize({ animate: false });
+      drawTemporalChart();
       dom.loadingOverlay.classList.add("is-hidden");
     });
   } catch (error) {
