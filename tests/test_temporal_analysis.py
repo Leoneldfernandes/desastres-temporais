@@ -26,9 +26,12 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn('id="toggleTemporalAnalysis"', self.page)
         self.assertIn('aria-controls="temporalAnalysis"', self.page)
 
-    def test_two_contexts_and_three_separate_metrics_are_exposed(self) -> None:
-        self.assertIn('data-temporal-context="general"', self.page)
+    def test_three_territorial_series_and_separate_metrics_are_exposed(self) -> None:
+        self.assertIn('data-temporal-context="brazil"', self.page)
+        self.assertIn('data-temporal-context="state"', self.page)
         self.assertIn('data-temporal-context="municipality"', self.page)
+        self.assertIn('id="temporalState"', self.page)
+        self.assertIn('id="temporalMunicipality"', self.page)
         self.assertIn('data-temporal-metric="events"', self.page)
         self.assertIn('data-temporal-metric="human"', self.page)
         self.assertIn('data-temporal-metric="loss"', self.page)
@@ -45,7 +48,8 @@ class TemporalAnalysisTests(unittest.TestCase):
         function_body = self.script[start:end]
         self.assertIn("state.summaryByPeriod", function_body)
         self.assertIn("state.activeTypes.has", function_body)
-        self.assertIn('state.scopeUF !== "BR"', function_body)
+        self.assertIn('state.temporalContext === "state"', function_body)
+        self.assertIn("meta.uf !== stateUf", function_body)
         self.assertIn("code !== municipalityCode", function_body)
 
     def test_playback_moves_selection_without_recalculating_the_series(self) -> None:
@@ -67,9 +71,11 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn("refreshTemporalSeries();\n  setPeriod(state.currentPeriod);", self.script)
 
     def test_chart_selection_and_state_are_shareable(self) -> None:
-        for parameter in ("historico", "serie", "indicador", "grafico"):
+        for parameter in ("historico", "estado", "indicador", "grafico"):
             self.assertIn(f'params.get("{parameter}")', self.script)
             self.assertIn(f'url.searchParams.set("{parameter}"', self.script)
+        self.assertIn('params.get("serie")', self.script)
+        self.assertRegex(self.script, r'url\.searchParams\.set\(\s*"serie"')
         self.assertIn("temporalIndexFromPointer(event)", self.script)
         self.assertIn("setPeriod(temporalIndexFromPointer(event))", self.script)
 
@@ -78,8 +84,11 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn('valueText = "Sem valor positivo registrado"', self.script)
         self.assertNotIn("zero declarado", self.script.lower())
 
-    def test_mobile_defaults_to_collapsed_and_keeps_touch_targets(self) -> None:
-        self.assertIn('!window.matchMedia("(max-width: 760px)").matches', self.script)
+    def test_chart_defaults_to_collapsed_and_keeps_touch_targets(self) -> None:
+        self.assertIn('const temporalExpanded = params.get("grafico") === "aberto"', self.script)
+        self.assertIn('id="temporalAnalysis" hidden', self.page)
+        self.assertIn('aria-expanded="false"', self.page)
+        self.assertIn('>Abrir série temporal</button>', self.page)
         mobile = re.search(
             r"@media \(max-width: 760px\) \{(?P<body>.*?)\n\}",
             self.styles,
@@ -90,6 +99,33 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn(".temporal-option", mobile.group("body"))
         self.assertGreaterEqual(mobile.group("body").count("min-height: 44px"), 2)
         self.assertIn("overflow-y: auto", mobile.group("body"))
+
+    def test_playback_speed_and_series_toggle_share_one_control_row(self) -> None:
+        self.assertIn('class="playback-tools"', self.page)
+        playback = self.page.index('class="playback-tools"')
+        player = self.page.index('class="player-controls"', playback)
+        speed = self.page.index('class="field speed-field"', playback)
+        toggle = self.page.index('id="toggleTemporalAnalysis"', playback)
+        self.assertLess(player, speed)
+        self.assertLess(speed, toggle)
+        self.assertIn('grid-template-areas: "period playback"', self.styles)
+        self.assertIn("gap: 8px", self.styles)
+
+    def test_missing_municipality_opens_the_existing_locator(self) -> None:
+        self.assertIn('>Selecionar município</button>', self.page)
+        start = self.script.index("function setTemporalContext(context)")
+        end = self.script.index("function setTemporalMunicipality", start)
+        function_body = self.script[start:end]
+        self.assertIn('context === "municipality" && !state.temporalMunicipalityCode', function_body)
+        self.assertIn("openMunicipalitySearch();", function_body)
+        self.assertIn('!event.target.closest("#temporalMunicipality")', self.script)
+        self.assertNotIn("dom.temporalMunicipality.disabled", self.script)
+
+    def test_map_credits_and_scale_follow_the_real_timeline_height(self) -> None:
+        self.assertIn("function syncMapControlOffset()", self.script)
+        self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
+        self.assertIn("--map-bottom-controls-offset", self.script)
+        self.assertIn("bottom: var(--map-bottom-controls-offset, 118px)", self.styles)
 
     def test_chart_is_keyboard_accessible_and_fullscreen_compatible(self) -> None:
         self.assertIn('role="slider"', self.page)

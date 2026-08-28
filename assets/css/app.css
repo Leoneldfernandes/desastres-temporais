@@ -570,7 +570,10 @@ input:focus-visible,
 
 .leaflet-top.leaflet-right { top: 46px; }
 
-.leaflet-bottom.leaflet-right { bottom: 118px; }
+.leaflet-bottom.leaflet-right {
+  bottom: var(--map-bottom-controls-offset, 118px);
+  transition: bottom 140ms ease;
+}
 
 .leaflet-control-scale-line {
   border-color: rgba(238, 246, 251, 0.82) !important;
@@ -1044,12 +1047,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .timeline.is-analysis-expanded { max-width: 900px; }
 
 .temporal-analysis-heading {
-  min-height: 34px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin: -3px 0 9px;
+  margin: 0 0 9px;
 }
 
 .temporal-analysis-heading strong,
@@ -1081,10 +1083,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 }
 
 .temporal-analysis-toggle {
-  min-height: 31px;
+  min-height: 36px;
   flex: 0 0 auto;
-  padding: 5px 9px;
+  padding: 5px 10px;
   font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .temporal-analysis-toggle:hover,
@@ -1131,11 +1134,6 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   border-color: rgba(66, 214, 232, 0.78);
   background: rgba(15, 71, 91, 0.88);
   color: #effcff;
-}
-
-.temporal-option:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
 }
 
 .temporal-chart-wrap {
@@ -1257,14 +1255,13 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   white-space: nowrap;
 }
 
-.map-stage.temporal-analysis-open .leaflet-bottom.leaflet-right { bottom: 362px; }
-
 .timeline-topline {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  grid-template-areas: "period player speed";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "period playback";
+  align-items: end;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
 }
 
 .current-period {
@@ -1284,8 +1281,15 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 }
 
 .player-controls {
-  grid-area: player;
   gap: 7px;
+}
+
+.playback-tools {
+  grid-area: playback;
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .share-view-button {
@@ -1364,11 +1368,6 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .speed-field select {
   min-width: 114px;
   height: 32px;
-}
-
-.timeline-topline > .speed-field {
-  grid-area: speed;
-  justify-self: end;
 }
 
 .range-row {
@@ -1801,10 +1800,7 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     overscroll-behavior: contain;
   }
 
-  .temporal-analysis-heading {
-    align-items: flex-start;
-    margin-bottom: 8px;
-  }
+  .temporal-analysis-heading { margin-bottom: 8px; }
 
   .temporal-analysis-heading span { max-width: 52vw; }
 
@@ -1837,23 +1833,24 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
   .leaflet-top.leaflet-right { top: 50px; }
 
-  .leaflet-bottom.leaflet-right { bottom: 198px; }
-
   .timeline-topline {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "period speed"
-      "player player"
-      "share share";
+      "period"
+      "playback"
+      "share";
   }
 
   .period-share { display: contents; }
 
   .period-display { grid-area: period; }
 
-  .player-controls {
+  .player-controls { justify-content: center; }
+
+  .playback-tools {
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .share-view-button {
@@ -1861,10 +1858,7 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     justify-self: center;
   }
 
-  .speed-field {
-    grid-column: 2;
-    grid-row: 1;
-  }
+  .speed-field { flex: 0 0 auto; }
 
   .map-key {
     right: 66px;

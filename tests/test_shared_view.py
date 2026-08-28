@@ -17,8 +17,8 @@ class SharedViewTests(unittest.TestCase):
         self.assertIn('id="shareView"', self.page)
         self.assertIn('id="shareViewLabel">Compartilhar visualização', self.page)
         self.assertLess(self.page.index('class="period-share"'), self.page.index('class="player-controls"'))
-        self.assertIn('grid-template-areas: "period player speed"', self.styles)
-        self.assertIn("grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)", self.styles)
+        self.assertIn('grid-template-areas: "period playback"', self.styles)
+        self.assertIn("grid-template-columns: minmax(0, 1fr) auto", self.styles)
 
     def test_share_button_looks_clickable_and_keeps_two_line_label(self) -> None:
         self.assertIn('class="share-view-icon"', self.page)
@@ -41,8 +41,8 @@ class SharedViewTests(unittest.TestCase):
             flags=re.DOTALL,
         )
         self.assertIsNotNone(mobile)
-        self.assertIn('"player player"', mobile.group("body"))
-        self.assertIn('"share share"', mobile.group("body"))
+        self.assertIn('"playback"', mobile.group("body"))
+        self.assertIn('"share"', mobile.group("body"))
         self.assertIn(".share-view-button", mobile.group("body"))
         self.assertIn("grid-area: share", mobile.group("body"))
 

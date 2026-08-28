@@ -172,10 +172,12 @@ const dom = Object.fromEntries(
     "maxPeriod",
     "periodSlider",
     "playbackMessage",
+    "timelinePanel",
     "toggleTemporalAnalysis",
     "temporalAnalysis",
     "temporalContextLabel",
-    "temporalGeneral",
+    "temporalBrazil",
+    "temporalState",
     "temporalMunicipality",
     "temporalChart",
     "temporalChartTooltip",
@@ -239,14 +241,16 @@ const state = {
   urlSyncReady: false,
   shareFeedbackTimer: null,
   pseudoFullscreen: false,
-  temporalContext: "general",
+  temporalContext: "brazil",
+  temporalStateUF: null,
   temporalMetric: "events",
   temporalMunicipalityCode: null,
   temporalSeries: [],
-  temporalExpanded: true,
+  temporalExpanded: false,
   temporalChartGeometry: null,
   temporalHoverIndex: null,
   temporalFrame: null,
+  timelineResizeObserver: null,
   restoringView: false,
 };
 
@@ -428,16 +432,32 @@ function viewStateFromUrl() {
   const temporalMetric =
     Object.entries(TEMPORAL_METRICS).find(([, definition]) => definition.urlValue === requestedMetric)?.[0] ||
     "events";
-  const requestedTemporalContext = params.get("serie");
-  const temporalContext =
-    temporalMunicipalityCode && requestedTemporalContext !== "geral" ? "municipality" : "general";
-  const requestedGraphState = params.get("grafico");
-  const temporalExpanded =
-    requestedGraphState === "aberto"
-      ? true
-      : requestedGraphState === "fechado"
-        ? false
-        : !window.matchMedia("(max-width: 760px)").matches;
+  const requestedTemporalState = String(params.get("estado") || "").toUpperCase();
+  const municipalityState = temporalMunicipalityCode
+    ? state.municipalityByCode.get(temporalMunicipalityCode)?.uf
+    : null;
+  const temporalStateUF =
+    requestedTemporalState !== "BR" && Object.hasOwn(UF_NAMES, requestedTemporalState)
+      ? requestedTemporalState
+      : uf !== "BR"
+        ? uf
+        : municipalityState || null;
+  const requestedTemporalContext = String(params.get("serie") || "").toLowerCase();
+  let temporalContext;
+  if (requestedTemporalContext === "municipio" && temporalMunicipalityCode) {
+    temporalContext = "municipality";
+  } else if (requestedTemporalContext === "estado" && temporalStateUF) {
+    temporalContext = "state";
+  } else if (requestedTemporalContext === "brasil") {
+    temporalContext = "brazil";
+  } else if (requestedTemporalContext === "geral") {
+    temporalContext = uf === "BR" ? "brazil" : "state";
+  } else if (temporalMunicipalityCode) {
+    temporalContext = "municipality";
+  } else {
+    temporalContext = uf === "BR" ? "brazil" : "state";
+  }
+  const temporalExpanded = params.get("grafico") === "aberto";
 
   return {
     uf,
@@ -446,6 +466,7 @@ function viewStateFromUrl() {
     municipalityCode,
     locatedMunicipalityCode,
     temporalMunicipalityCode,
+    temporalStateUF,
     temporalMetric,
     temporalContext,
     temporalExpanded,
@@ -485,11 +506,19 @@ function syncViewUrl() {
   }
   if (state.temporalMunicipalityCode) {
     url.searchParams.set("historico", state.temporalMunicipalityCode);
-    url.searchParams.set("serie", state.temporalContext === "municipality" ? "municipio" : "geral");
   } else {
     url.searchParams.delete("historico");
-    url.searchParams.delete("serie");
   }
+  if (state.temporalStateUF) url.searchParams.set("estado", state.temporalStateUF);
+  else url.searchParams.delete("estado");
+  url.searchParams.set(
+    "serie",
+    state.temporalContext === "municipality"
+      ? "municipio"
+      : state.temporalContext === "state"
+        ? "estado"
+        : "brasil"
+  );
   if (state.temporalMetric === "events") url.searchParams.delete("indicador");
   else url.searchParams.set("indicador", TEMPORAL_METRICS[state.temporalMetric].urlValue);
   url.searchParams.set("grafico", state.temporalExpanded ? "aberto" : "fechado");
@@ -945,7 +974,9 @@ function emptyTemporalEntry() {
 function buildTemporalSeries() {
   const series = Array.from({ length: state.periods.length }, emptyTemporalEntry);
   const municipalityMode = state.temporalContext === "municipality";
+  const stateMode = state.temporalContext === "state";
   const municipalityCode = state.temporalMunicipalityCode;
+  const stateUf = state.temporalStateUF;
 
   for (let periodIndex = 0; periodIndex < state.summaryByPeriod.length; periodIndex += 1) {
     const entry = series[periodIndex];
@@ -956,7 +987,7 @@ function buildTemporalSeries() {
       if (!meta) continue;
       if (municipalityMode) {
         if (!municipalityCode || code !== municipalityCode) continue;
-      } else if (state.scopeUF !== "BR" && meta.uf !== state.scopeUF) {
+      } else if (stateMode && (!stateUf || meta.uf !== stateUf)) {
         continue;
       }
 
@@ -988,21 +1019,26 @@ function temporalContextText() {
       : `${selectedCount} ${selectedCount === 1 ? "tipologia" : "tipologias"}`;
   if (state.temporalContext === "municipality" && state.temporalMunicipalityCode) {
     const meta = state.municipalityByCode.get(state.temporalMunicipalityCode);
-    if (meta) return `Histórico municipal · ${meta.name} — ${meta.uf} · ${typeText}`;
+    if (meta) return `Município · ${meta.name} — ${meta.uf} · ${typeText}`;
   }
-  return `Panorama geral · ${UF_NAMES[state.scopeUF]} · ${typeText}`;
+  if (state.temporalContext === "state" && state.temporalStateUF) {
+    return `Estado · ${UF_NAMES[state.temporalStateUF]} — ${state.temporalStateUF} · ${typeText}`;
+  }
+  return `Brasil · ${typeText}`;
 }
 
 function syncTemporalControls() {
   const municipality = state.temporalMunicipalityCode
     ? state.municipalityByCode.get(state.temporalMunicipalityCode)
     : null;
-  dom.temporalMunicipality.disabled = !municipality;
+  dom.temporalState.textContent = state.temporalStateUF
+    ? `${UF_NAMES[state.temporalStateUF]} — ${state.temporalStateUF}`
+    : "Selecionar estado";
   dom.temporalMunicipality.textContent = municipality
     ? `${municipality.name} — ${municipality.uf}`
-    : "Município selecionado";
+    : "Selecionar município";
 
-  for (const button of [dom.temporalGeneral, dom.temporalMunicipality]) {
+  for (const button of [dom.temporalBrazil, dom.temporalState, dom.temporalMunicipality]) {
     const active = button.dataset.temporalContext === state.temporalContext;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
@@ -1015,19 +1051,36 @@ function syncTemporalControls() {
   dom.temporalContextLabel.textContent = temporalContextText();
 }
 
+function syncMapControlOffset() {
+  const timelineBounds = dom.timelinePanel.getBoundingClientRect();
+  const mapBounds = dom.mapStage.getBoundingClientRect();
+  const offset = Math.max(8, Math.ceil(mapBounds.bottom - timelineBounds.top + 8));
+  dom.mapStage.style.setProperty("--map-bottom-controls-offset", `${offset}px`);
+}
+
+function observeTimelineSize() {
+  syncMapControlOffset();
+  if (typeof ResizeObserver !== "function") return;
+  state.timelineResizeObserver = new ResizeObserver(syncMapControlOffset);
+  state.timelineResizeObserver.observe(dom.timelinePanel);
+}
+
 function setTemporalAnalysisExpanded(expanded, syncUrl = true) {
   state.temporalExpanded = Boolean(expanded);
   dom.temporalAnalysis.hidden = !state.temporalExpanded;
   dom.toggleTemporalAnalysis.setAttribute("aria-expanded", String(state.temporalExpanded));
   dom.toggleTemporalAnalysis.textContent = state.temporalExpanded
-    ? "Recolher gráfico"
-    : "Abrir análise temporal";
+    ? "Fechar série temporal"
+    : "Abrir série temporal";
   dom.mapStage.classList.toggle("temporal-analysis-open", state.temporalExpanded);
   dom.toggleTemporalAnalysis.closest(".timeline").classList.toggle(
     "is-analysis-expanded",
     state.temporalExpanded
   );
-  if (state.temporalExpanded) window.requestAnimationFrame(drawTemporalChart);
+  window.requestAnimationFrame(() => {
+    syncMapControlOffset();
+    if (state.temporalExpanded) drawTemporalChart();
+  });
   if (syncUrl) syncViewUrl();
 }
 
@@ -1040,8 +1093,24 @@ function setTemporalMetric(metric) {
 }
 
 function setTemporalContext(context) {
-  if (context === "municipality" && !state.temporalMunicipalityCode) return;
-  const nextContext = context === "municipality" ? "municipality" : "general";
+  if (context === "municipality" && !state.temporalMunicipalityCode) {
+    openMunicipalitySearch();
+    return;
+  }
+  if (context === "state" && !state.temporalStateUF) {
+    dom.ufSelector.focus();
+    if (typeof dom.ufSelector.showPicker === "function") {
+      try {
+        dom.ufSelector.showPicker();
+      } catch (error) {
+        console.debug("O seletor de UF recebeu foco, mas o navegador não abriu a lista.", error);
+      }
+    }
+    return;
+  }
+  const nextContext = ["brazil", "state", "municipality"].includes(context)
+    ? context
+    : "brazil";
   if (nextContext === state.temporalContext) return;
   state.temporalContext = nextContext;
   refreshTemporalSeries();
@@ -1051,8 +1120,14 @@ function setTemporalContext(context) {
 function setTemporalMunicipality(code, select = true) {
   const nextCode = code && state.municipalityByCode.has(String(code)) ? String(code) : null;
   state.temporalMunicipalityCode = nextCode;
-  if (select && nextCode) state.temporalContext = "municipality";
-  if (!nextCode && state.temporalContext === "municipality") state.temporalContext = "general";
+  if (nextCode) {
+    const municipality = state.municipalityByCode.get(nextCode);
+    if (municipality && state.scopeUF === "BR") state.temporalStateUF = municipality.uf;
+    if (select) state.temporalContext = "municipality";
+  }
+  if (!nextCode && state.temporalContext === "municipality") {
+    state.temporalContext = state.temporalStateUF ? "state" : "brazil";
+  }
   if (state.ready) refreshTemporalSeries();
   else syncTemporalControls();
   syncViewUrl();
@@ -1765,8 +1840,12 @@ function geometryFileUrl(uf) {
 function refreshMapLayout() {
   window.requestAnimationFrame(() => {
     map.invalidateSize({ animate: false });
+    syncMapControlOffset();
     drawTemporalChart();
-    window.setTimeout(() => map.invalidateSize({ animate: false }), 140);
+    window.setTimeout(() => {
+      map.invalidateSize({ animate: false });
+      syncMapControlOffset();
+    }, 140);
   });
 }
 
@@ -1844,6 +1923,7 @@ async function changeScope(nextUf) {
       state.geometryCache.set(nextUf, geometry);
     }
     state.scopeUF = nextUf;
+    if (nextUf !== "BR") state.temporalStateUF = nextUf;
     const locatedMeta = state.locatedMunicipalityCode
       ? state.municipalityByCode.get(state.locatedMunicipalityCode)
       : null;
@@ -1857,6 +1937,9 @@ async function changeScope(nextUf) {
       : null;
     if (temporalMeta && nextUf !== "BR" && temporalMeta.uf !== nextUf) {
       setTemporalMunicipality(null);
+    }
+    if (state.temporalContext !== "municipality") {
+      state.temporalContext = nextUf === "BR" ? "brazil" : "state";
     }
     renderGeography(geometry, true);
     dom.scopePill.textContent = UF_NAMES[nextUf];
@@ -1907,7 +1990,8 @@ function bindEvents() {
     }
     if (
       !dom.municipalitySearchPanel.hidden &&
-      !event.target.closest("#municipalityLocator")
+      !event.target.closest("#municipalityLocator") &&
+      !event.target.closest("#temporalMunicipality")
     ) {
       closeMunicipalitySearch();
     }
@@ -2049,6 +2133,7 @@ function bindEvents() {
     clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       map.invalidateSize({ animate: false });
+      syncMapControlOffset();
       renderVirtualRows();
       drawTemporalChart();
     }, 120);
@@ -2085,6 +2170,7 @@ async function initialize() {
     state.scopeUF = initialView.uf;
     state.locatedMunicipalityCode = initialView.locatedMunicipalityCode;
     state.temporalMunicipalityCode = initialView.temporalMunicipalityCode;
+    state.temporalStateUF = initialView.temporalStateUF;
     state.temporalMetric = initialView.temporalMetric;
     state.temporalContext = initialView.temporalContext;
     state.currentPeriod = initialView.periodIndex;
@@ -2099,6 +2185,7 @@ async function initialize() {
     state.ready = true;
     syncTemporalControls();
     setTemporalAnalysisExpanded(initialView.temporalExpanded, false);
+    observeTimelineSize();
     refreshTemporalSeries();
     setPeriod(initialView.periodIndex);
     state.urlSyncReady = true;
