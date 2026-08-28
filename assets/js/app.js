@@ -138,6 +138,9 @@ const dom = Object.fromEntries(
     "loadingTitle",
     "loadingMessage",
     "retryButton",
+    "mapStage",
+    "toggleFullscreen",
+    "resetMapView",
     "displayPeriod",
     "previousPeriod",
     "playButton",
@@ -209,6 +212,7 @@ const state = {
   locatedMunicipalityCode: null,
   urlSyncReady: false,
   shareFeedbackTimer: null,
+  pseudoFullscreen: false,
 };
 
 const mapRenderer = L.canvas({ padding: 0.45, tolerance: 5 });
@@ -223,6 +227,12 @@ const map = L.map("map", {
 });
 
 L.control.zoom({ position: "topright" }).addTo(map);
+L.control.scale({
+  position: "bottomright",
+  metric: true,
+  imperial: false,
+  maxWidth: 110,
+}).addTo(map);
 map.attributionControl.setPrefix(false);
 map.attributionControl.addAttribution(
   '<a href="https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html" target="_blank" rel="noopener">Municípios: IBGE 2025</a> · ' +
@@ -1374,6 +1384,72 @@ function geometryFileUrl(uf) {
   return versionedDataUrl(state.manifest.files.stateGeometryPattern.replace("{UF}", uf));
 }
 
+function refreshMapLayout() {
+  window.requestAnimationFrame(() => {
+    map.invalidateSize({ animate: false });
+    window.setTimeout(() => map.invalidateSize({ animate: false }), 140);
+  });
+}
+
+function resetMapToScope() {
+  if (!state.geoLayer) return;
+  closeMapTooltip();
+  map.fitBounds(state.geoLayer.getBounds(), {
+    padding: [18, 18],
+    animate: false,
+  });
+}
+
+function mapIsFullscreen() {
+  return document.fullscreenElement === dom.mapStage || state.pseudoFullscreen;
+}
+
+function syncFullscreenControl() {
+  const active = mapIsFullscreen();
+  const label = active ? "Sair da tela cheia" : "Visualizar mapa em tela cheia";
+  dom.toggleFullscreen.setAttribute("aria-label", label);
+  dom.toggleFullscreen.setAttribute("title", label);
+  dom.toggleFullscreen.setAttribute("aria-pressed", String(active));
+  dom.toggleFullscreen.classList.toggle("is-active", active);
+}
+
+function enterPseudoFullscreen() {
+  state.pseudoFullscreen = true;
+  document.body.classList.add("map-pseudo-fullscreen");
+  dom.mapStage.classList.add("is-pseudo-fullscreen");
+  syncFullscreenControl();
+  refreshMapLayout();
+}
+
+function exitPseudoFullscreen() {
+  if (!state.pseudoFullscreen) return;
+  state.pseudoFullscreen = false;
+  document.body.classList.remove("map-pseudo-fullscreen");
+  dom.mapStage.classList.remove("is-pseudo-fullscreen");
+  syncFullscreenControl();
+  refreshMapLayout();
+}
+
+async function toggleMapFullscreen() {
+  if (document.fullscreenElement === dom.mapStage) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (state.pseudoFullscreen) {
+    exitPseudoFullscreen();
+    return;
+  }
+  if (typeof dom.mapStage.requestFullscreen === "function") {
+    try {
+      await dom.mapStage.requestFullscreen();
+      return;
+    } catch (error) {
+      console.warn("Tela cheia nativa indisponível; usando modo ampliado.", error);
+    }
+  }
+  enterPseudoFullscreen();
+}
+
 async function changeScope(nextUf) {
   if (!state.ready || nextUf === state.scopeUF) return;
   const previousUf = state.scopeUF;
@@ -1455,6 +1531,8 @@ function bindEvents() {
   dom.previousPeriod.addEventListener("click", () => setPeriod(state.currentPeriod - 1));
   dom.nextPeriod.addEventListener("click", () => setPeriod(state.currentPeriod + 1));
   dom.shareView.addEventListener("click", shareCurrentView);
+  dom.toggleFullscreen.addEventListener("click", toggleMapFullscreen);
+  dom.resetMapView.addEventListener("click", resetMapToScope);
   dom.municipalitySearchToggle.addEventListener("click", () => {
     if (dom.municipalitySearchPanel.hidden) openMunicipalitySearch();
     else closeMunicipalitySearch(true);
@@ -1501,6 +1579,14 @@ function bindEvents() {
     else removePlaybackBlock("hidden");
   });
 
+  document.addEventListener("fullscreenchange", () => {
+    if (document.fullscreenElement === dom.mapStage && state.pseudoFullscreen) {
+      exitPseudoFullscreen();
+    }
+    syncFullscreenControl();
+    refreshMapLayout();
+  });
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       if (!dom.municipalitySearchPanel.hidden) {
@@ -1509,8 +1595,16 @@ function bindEvents() {
       }
       if (dom.dataStatus.getAttribute("aria-expanded") === "true") {
         setUpdateStatusPanel(false, true);
+        return;
       }
-      closeDetail();
+      if (!dom.detailModal.classList.contains("is-hidden")) {
+        closeDetail();
+        return;
+      }
+      if (state.pseudoFullscreen) {
+        exitPseudoFullscreen();
+        return;
+      }
       return;
     }
     if (!state.ready || !dom.detailModal.classList.contains("is-hidden")) return;

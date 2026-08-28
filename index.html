@@ -10,9 +10,9 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=c69e355c35ca">
+    <link rel="stylesheet" href="assets/css/app.css?v=7ea7ad018830">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=4ce04a60663d"></script>
+    <script defer src="assets/js/app.js?v=3565e70052da"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -161,8 +161,35 @@
         </section>
       </aside>
 
-      <section class="map-stage" aria-label="Mapa do Brasil">
+      <section class="map-stage" id="mapStage" aria-label="Mapa do Brasil">
         <div id="map" tabindex="0" aria-label="Mapa interativo dos municípios brasileiros"></div>
+
+        <div class="map-tools" role="group" aria-label="Controles de visualização do mapa">
+          <button
+            class="map-tool-button"
+            id="toggleFullscreen"
+            type="button"
+            aria-label="Visualizar mapa em tela cheia"
+            aria-pressed="false"
+            title="Visualizar mapa em tela cheia"
+          >
+            <span class="fullscreen-icon" aria-hidden="true"></span>
+          </button>
+          <button
+            class="map-tool-button"
+            id="resetMapView"
+            type="button"
+            aria-label="Retornar ao panorama do recorte"
+            title="Retornar ao panorama do recorte"
+          >
+            <span class="home-view-icon" aria-hidden="true">⌂</span>
+          </button>
+        </div>
+
+        <div class="north-indicator" role="img" aria-label="Norte">
+          <span class="north-arrow" aria-hidden="true"></span>
+          <strong aria-hidden="true">N</strong>
+        </div>
 
         <div class="municipality-locator" id="municipalityLocator">
           <button
