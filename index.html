@@ -10,9 +10,9 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=6951b954590c">
+    <link rel="stylesheet" href="assets/css/app.css?v=950c070b1ebd">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=a0c6cf91e93d"></script>
+    <script defer src="assets/js/app.js?v=878c5a89e565"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -245,39 +245,37 @@
           </div>
         </div>
 
-        <section class="timeline" aria-label="Linha temporal">
-          <div class="temporal-analysis-heading">
-            <div>
-              <strong>Evolução temporal</strong>
-              <span id="temporalContextLabel">Panorama geral · Brasil · 16 tipologias</span>
+        <section class="timeline" id="timelinePanel" aria-label="Linha temporal">
+          <div class="temporal-analysis" id="temporalAnalysis" hidden>
+            <div class="temporal-analysis-heading">
+              <div>
+                <strong>Evolução temporal</strong>
+                <span id="temporalContextLabel">Brasil · 16 tipologias</span>
+              </div>
             </div>
-            <button
-              class="temporal-analysis-toggle"
-              id="toggleTemporalAnalysis"
-              type="button"
-              aria-expanded="true"
-              aria-controls="temporalAnalysis"
-            >Recolher gráfico</button>
-          </div>
-
-          <div class="temporal-analysis" id="temporalAnalysis">
             <div class="temporal-analysis-controls">
               <div class="temporal-control-group" role="group" aria-label="Nível da análise temporal">
                 <button
                   class="temporal-option is-active"
-                  id="temporalGeneral"
+                  id="temporalBrazil"
                   type="button"
-                  data-temporal-context="general"
+                  data-temporal-context="brazil"
                   aria-pressed="true"
-                >Panorama geral</button>
+                >Brasil</button>
+                <button
+                  class="temporal-option"
+                  id="temporalState"
+                  type="button"
+                  data-temporal-context="state"
+                  aria-pressed="false"
+                >Selecionar estado</button>
                 <button
                   class="temporal-option"
                   id="temporalMunicipality"
                   type="button"
                   data-temporal-context="municipality"
                   aria-pressed="false"
-                  disabled
-                >Município selecionado</button>
+                >Selecionar município</button>
               </div>
               <div class="temporal-control-group temporal-metric-options" role="group" aria-label="Indicador temporal">
                 <button
@@ -328,27 +326,36 @@
                 <span class="share-view-icon" aria-hidden="true">↗</span>
               </button>
             </div>
-            <div class="player-controls">
-              <button class="icon-button" type="button" id="previousPeriod" aria-label="Mês anterior">
-                <span aria-hidden="true">‹</span>
-              </button>
-              <button class="button play-button" type="button" id="playButton" aria-label="Reproduzir linha temporal">
-                <span id="playIcon" aria-hidden="true">▶</span>
-                <span id="playLabel">Reproduzir</span>
-              </button>
-              <button class="icon-button" type="button" id="nextPeriod" aria-label="Próximo mês">
-                <span aria-hidden="true">›</span>
-              </button>
+            <div class="playback-tools">
+              <div class="player-controls">
+                <button class="icon-button" type="button" id="previousPeriod" aria-label="Mês anterior">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <button class="button play-button" type="button" id="playButton" aria-label="Reproduzir linha temporal">
+                  <span id="playIcon" aria-hidden="true">▶</span>
+                  <span id="playLabel">Reproduzir</span>
+                </button>
+                <button class="icon-button" type="button" id="nextPeriod" aria-label="Próximo mês">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+              <label class="field speed-field" for="speedSelect">
+                <span>Velocidade</span>
+                <select id="speedSelect">
+                  <option value="2000">1 mês / 2 s</option>
+                  <option value="1000" selected>1 mês / s</option>
+                  <option value="500">2 meses / s</option>
+                  <option value="333">3 meses / s</option>
+                </select>
+              </label>
+              <button
+                class="temporal-analysis-toggle"
+                id="toggleTemporalAnalysis"
+                type="button"
+                aria-expanded="false"
+                aria-controls="temporalAnalysis"
+              >Abrir série temporal</button>
             </div>
-            <label class="field speed-field" for="speedSelect">
-              <span>Velocidade</span>
-              <select id="speedSelect">
-                <option value="2000">1 mês / 2 s</option>
-                <option value="1000" selected>1 mês / s</option>
-                <option value="500">2 meses / s</option>
-                <option value="333">3 meses / s</option>
-              </select>
-            </label>
           </div>
           <div class="range-row">
             <span id="minPeriod">01/1991</span>

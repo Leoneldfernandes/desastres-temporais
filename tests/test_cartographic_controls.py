@@ -28,6 +28,9 @@ class CartographicControlTests(unittest.TestCase):
         self.assertIn("maxWidth: 110", self.script)
         self.assertIn(".leaflet-bottom.leaflet-right", self.styles)
         self.assertIn(".leaflet-control-scale-line", self.styles)
+        self.assertIn("--map-bottom-controls-offset", self.styles)
+        self.assertIn("timelineBounds.top", self.script)
+        self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
 
     def test_home_returns_to_the_current_scope_without_changing_filters(self) -> None:
         start = self.script.index("function resetMapToScope()")
