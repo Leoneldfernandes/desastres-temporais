@@ -156,7 +156,49 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn("grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)", self.styles)
         self.assertIn('grid-template-areas: "period player settings"', self.styles)
         self.assertIn("justify-self: center", self.styles)
-        self.assertIn("gap: 8px", self.styles)
+
+    def test_next_month_button_is_not_covered_by_playback_settings(self) -> None:
+        timeline_style = re.search(
+            r"\.timeline-topline\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        player_style = re.search(
+            r"\.player-controls\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        settings_style = re.search(
+            r"\.playback-settings\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        speed_style = re.search(
+            r"\.speed-field select\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        toggle_style = re.search(
+            r"\.temporal-analysis-toggle\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+
+        for style in (
+            timeline_style,
+            player_style,
+            settings_style,
+            speed_style,
+            toggle_style,
+        ):
+            self.assertIsNotNone(style)
+
+        self.assertIn("gap: 6px", timeline_style.group("body"))
+        self.assertIn("gap: 5px", player_style.group("body"))
+        self.assertIn("min-width: 0", settings_style.group("body"))
+        self.assertIn("gap: 5px", settings_style.group("body"))
+        self.assertIn("width: 92px", speed_style.group("body"))
+        self.assertIn("width: 120px", toggle_style.group("body"))
 
     def test_missing_municipality_opens_the_existing_locator(self) -> None:
         self.assertIn('>Selecionar município</button>', self.page)

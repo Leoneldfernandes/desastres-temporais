@@ -12,7 +12,7 @@ O total territorial reproduz integralmente a Malha Municipal 2025 do IBGE: 5.569
 
 Cada linha da fonte representa um registro de desastre. O mês do mapa vem de `Data_Evento`; as somas são agrupadas por mês, código territorial e tipologia. A aplicação não inventa eventos para meses ou locais sem registro.
 
-As decisões de tratamento, variáveis, validações, limitações e composição territorial estão descritas em [Metodologia](docs/metodologia.md).
+As decisões de tratamento, variáveis, validações, limitações e composição territorial estão descritas em [Metodologia](docs/metodologia.md). A consolidação da primeira versão desktop está documentada no [Relatório final de auditoria](docs/auditoria-final.md).
 
 ## Decisão de arquitetura
 

@@ -1148,10 +1148,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 }
 
 .temporal-analysis-toggle {
+  width: 120px;
   min-height: 36px;
   flex: 0 0 auto;
-  padding: 5px 10px;
-  font-size: 0.68rem;
+  padding: 5px 4px;
+  font-size: 0.64rem;
   white-space: nowrap;
 }
 
@@ -1347,7 +1348,7 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-areas: "period player settings";
   align-items: end;
-  gap: 10px;
+  gap: 6px;
 }
 
 .current-period {
@@ -1369,15 +1370,16 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .player-controls {
   grid-area: player;
   justify-self: center;
-  gap: 7px;
+  gap: 5px;
 }
 
 .playback-settings {
   grid-area: settings;
+  min-width: 0;
   display: flex;
   align-items: end;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 5px;
 }
 
 .share-view-button {
@@ -1460,7 +1462,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .play-button:hover { background: linear-gradient(135deg, #0795b7, #167dac); }
 
 .speed-field select {
-  min-width: 114px;
+  width: 92px;
+  min-width: 92px;
   height: 32px;
 }
 
