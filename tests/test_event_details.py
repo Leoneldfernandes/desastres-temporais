@@ -52,6 +52,20 @@ class EventDetailInteractionTests(unittest.TestCase):
         self.assertIn(".detail-legend", self.styles)
         self.assertIn("margin-top: 12px", self.styles)
 
+    def test_results_table_uses_opaque_contained_surfaces(self) -> None:
+        table = re.search(r"\.virtual-table\s*\{(?P<body>.*?)\n\}", self.styles, re.DOTALL)
+        canvas = re.search(r"\.virtual-canvas\s*\{(?P<body>.*?)\n\}", self.styles, re.DOTALL)
+        row_start = self.styles.index(".virtual-row {", self.styles.index(".virtual-canvas"))
+        row_end = self.styles.index("\n}", row_start)
+        row = self.styles[row_start:row_end]
+        self.assertIsNotNone(table)
+        self.assertIsNotNone(canvas)
+        self.assertIn("contain: paint", table.group("body"))
+        self.assertIn("background: #07111f", table.group("body"))
+        self.assertIn("overflow: hidden", canvas.group("body"))
+        self.assertIn("background: #07111f", canvas.group("body"))
+        self.assertIn("background: #07111f", row)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -128,6 +128,10 @@ const TYPE_GROUPS = Object.freeze([
 
 const ROW_HEIGHT = 42;
 const TABLE_HEADER_HEIGHT = 35;
+const LOCATOR_POPUP_VISIBLE_MS = 4_000;
+const LOCATOR_POPUP_FADE_MS = 700;
+const TEMPORAL_CHART_TOP = 30;
+const MAP_SCALE_CREDIT_GAP = 4;
 const EMPTY_STYLE = Object.freeze({
   color: "#d8e6ef",
   weight: 0.45,
@@ -287,6 +291,8 @@ const state = {
   tableFrame: null,
   detailSnapshot: null,
   locatedMunicipalityCode: null,
+  locatorPopupFadeTimer: null,
+  locatorPopupCloseTimer: null,
   urlSyncReady: false,
   shareFeedbackTimer: null,
   exportGenerating: false,
@@ -301,7 +307,7 @@ const state = {
   temporalChartGeometry: null,
   temporalHoverIndex: null,
   temporalFrame: null,
-  timelineResizeObserver: null,
+  mapCreditsResizeObserver: null,
   restoringView: false,
 };
 
@@ -1391,18 +1397,20 @@ function syncTemporalControls() {
   dom.temporalContextLabel.textContent = temporalContextText();
 }
 
-function syncMapControlOffset() {
-  const timelineBounds = dom.timelinePanel.getBoundingClientRect();
-  const mapBounds = dom.mapStage.getBoundingClientRect();
-  const offset = Math.max(8, Math.ceil(mapBounds.bottom - timelineBounds.top + 8));
-  dom.mapStage.style.setProperty("--map-bottom-controls-offset", `${offset}px`);
+function syncMapScaleOffset() {
+  const attribution = dom.mapStage.querySelector(".leaflet-control-attribution");
+  const creditHeight = attribution?.getBoundingClientRect().height || 18;
+  const offset = Math.ceil(creditHeight + MAP_SCALE_CREDIT_GAP);
+  dom.mapStage.style.setProperty("--map-scale-bottom", `${offset}px`);
 }
 
-function observeTimelineSize() {
-  syncMapControlOffset();
+function observeMapCreditsSize() {
+  syncMapScaleOffset();
   if (typeof ResizeObserver !== "function") return;
-  state.timelineResizeObserver = new ResizeObserver(syncMapControlOffset);
-  state.timelineResizeObserver.observe(dom.timelinePanel);
+  const attribution = dom.mapStage.querySelector(".leaflet-control-attribution");
+  if (!attribution) return;
+  state.mapCreditsResizeObserver = new ResizeObserver(syncMapScaleOffset);
+  state.mapCreditsResizeObserver.observe(attribution);
 }
 
 function setTemporalAnalysisExpanded(expanded, syncUrl = true) {
@@ -1418,7 +1426,7 @@ function setTemporalAnalysisExpanded(expanded, syncUrl = true) {
     state.temporalExpanded
   );
   window.requestAnimationFrame(() => {
-    syncMapControlOffset();
+    syncMapScaleOffset();
     if (state.temporalExpanded) drawTemporalChart();
   });
   if (syncUrl) syncViewUrl();
@@ -1557,13 +1565,13 @@ function drawTemporalChart() {
     const height = Math.max(150, container.clientHeight);
     const left = width < 480 ? 62 : 72;
     const right = 14;
-    const top = 18;
+    const top = TEMPORAL_CHART_TOP;
     const bottom = 28;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
     const values = state.temporalSeries.map((entry) => temporalEntryValue(entry));
     const observedMaximum = Math.max(0, ...values);
-    const maxValue = observedMaximum > 0 ? observedMaximum * 1.04 : 1;
+    const maxValue = observedMaximum > 0 ? observedMaximum * 1.08 : 1;
     const x = (index) => left + (index / Math.max(1, values.length - 1)) * plotWidth;
     const y = (value) => top + plotHeight - (value / maxValue) * plotHeight;
     const linePath = values
@@ -1896,12 +1904,50 @@ async function locateMunicipality(code) {
     .setLatLng(layer.getBounds().getCenter())
     .setContent(municipalityLocatorSummary(meta.code))
     .openOn(map);
+  bindMunicipalityPopupInteraction();
+  scheduleMunicipalityPopupAutoClose();
+}
+
+function clearMunicipalityPopupTimers() {
+  window.clearTimeout(state.locatorPopupFadeTimer);
+  window.clearTimeout(state.locatorPopupCloseTimer);
+  state.locatorPopupFadeTimer = null;
+  state.locatorPopupCloseTimer = null;
+}
+
+function closeMunicipalityPopupImmediately() {
+  clearMunicipalityPopupTimers();
+  const popupElement = municipalityLocatorPopup.getElement();
+  if (popupElement) popupElement.classList.remove("is-fading");
+  if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
+}
+
+function scheduleMunicipalityPopupAutoClose() {
+  clearMunicipalityPopupTimers();
+  const popupElement = municipalityLocatorPopup.getElement();
+  if (!municipalityLocatorPopup._map || !popupElement) return;
+  popupElement.classList.remove("is-fading");
+  state.locatorPopupFadeTimer = window.setTimeout(() => {
+    if (!municipalityLocatorPopup._map) return;
+    popupElement.classList.add("is-fading");
+    state.locatorPopupCloseTimer = window.setTimeout(
+      closeMunicipalityPopupImmediately,
+      LOCATOR_POPUP_FADE_MS
+    );
+  }, LOCATOR_POPUP_VISIBLE_MS);
+}
+
+function bindMunicipalityPopupInteraction() {
+  const popupElement = municipalityLocatorPopup.getElement();
+  if (!popupElement) return;
+  popupElement.addEventListener("pointerenter", clearMunicipalityPopupTimers);
+  popupElement.addEventListener("pointerleave", scheduleMunicipalityPopupAutoClose);
 }
 
 function clearLocatedMunicipality() {
   const previousCode = state.locatedMunicipalityCode;
   setLocatedMunicipality(null);
-  if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
+  closeMunicipalityPopupImmediately();
   dom.municipalitySearchInput.value = "";
   dom.municipalitySearchResults.innerHTML = "";
   dom.municipalitySearchStatus.textContent = "Digite ao menos duas letras.";
@@ -2180,11 +2226,11 @@ function geometryFileUrl(uf) {
 function refreshMapLayout() {
   window.requestAnimationFrame(() => {
     map.invalidateSize({ animate: false });
-    syncMapControlOffset();
+    syncMapScaleOffset();
     drawTemporalChart();
     window.setTimeout(() => {
       map.invalidateSize({ animate: false });
-      syncMapControlOffset();
+      syncMapScaleOffset();
     }, 140);
   });
 }
@@ -2192,6 +2238,7 @@ function refreshMapLayout() {
 function resetMapToScope() {
   if (!state.geoLayer) return;
   closeMapTooltip();
+  closeMunicipalityPopupImmediately();
   map.fitBounds(state.geoLayer.getBounds(), {
     padding: [18, 18],
     animate: false,
@@ -2269,7 +2316,7 @@ async function changeScope(nextUf) {
       : null;
     if (locatedMeta && nextUf !== "BR" && locatedMeta.uf !== nextUf) {
       setLocatedMunicipality(null);
-      if (municipalityLocatorPopup._map) municipalityLocatorPopup.removeFrom(map);
+      closeMunicipalityPopupImmediately();
       dom.municipalitySearchInput.value = "";
     }
     const temporalMeta = state.temporalMunicipalityCode
@@ -2492,13 +2539,19 @@ function bindEvents() {
     clearTimeout(state.mapResumeTimer);
     state.mapResumeTimer = window.setTimeout(() => removePlaybackBlock("map"), 180);
   });
+  map.on("popupclose", (event) => {
+    if (event.popup === municipalityLocatorPopup) clearMunicipalityPopupTimers();
+  });
+  map.on("baselayerchange overlayadd overlayremove", () => {
+    window.requestAnimationFrame(syncMapScaleOffset);
+  });
 
   let resizeTimer;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       map.invalidateSize({ animate: false });
-      syncMapControlOffset();
+      syncMapScaleOffset();
       renderVirtualRows();
       drawTemporalChart();
     }, 120);
@@ -2550,7 +2603,7 @@ async function initialize() {
     state.ready = true;
     syncTemporalControls();
     setTemporalAnalysisExpanded(initialView.temporalExpanded, false);
-    observeTimelineSize();
+    observeMapCreditsSize();
     refreshTemporalSeries();
     setPeriod(initialView.periodIndex);
     state.urlSyncReady = true;

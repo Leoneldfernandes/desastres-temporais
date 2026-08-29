@@ -20,22 +20,34 @@ class CartographicControlTests(unittest.TestCase):
         self.assertIn('class="north-indicator"', self.page)
         self.assertIn('aria-label="Norte"', self.page)
         self.assertLess(self.page.index('id="map"'), self.page.index('id="toggleFullscreen"'))
+        locator = self.page.index('id="municipalityLocator"')
+        fullscreen = self.page.index('id="toggleFullscreen"')
+        panorama = self.page.index('id="resetMapView"')
+        self.assertLess(locator, fullscreen)
+        self.assertLess(fullscreen, panorama)
+        self.assertRegex(
+            self.styles,
+            r"(?s)\.north-indicator\s*\{.*?top: 178px;.*?right: 17px;.*?drop-shadow",
+        )
 
-    def test_scale_is_metric_and_stays_clear_of_the_timeline(self) -> None:
+    def test_scale_is_metric_and_stays_four_pixels_above_credits(self) -> None:
         self.assertIn("L.control.scale({", self.script)
         self.assertIn("metric: true", self.script)
         self.assertIn("imperial: false", self.script)
         self.assertIn("maxWidth: 110", self.script)
         self.assertIn(".leaflet-bottom.leaflet-right", self.styles)
         self.assertIn(".leaflet-control-scale-line", self.styles)
-        self.assertIn("--map-bottom-controls-offset", self.styles)
+        self.assertIn("--map-scale-bottom", self.styles)
         self.assertRegex(
             self.styles,
             r"\.leaflet-bottom\.leaflet-right\s*\{\s*bottom: 0;",
         )
         self.assertIn(".leaflet-control-scale {", self.styles)
-        self.assertIn("timelineBounds.top", self.script)
-        self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
+        self.assertIn("const MAP_SCALE_CREDIT_GAP = 4;", self.script)
+        self.assertIn('querySelector(".leaflet-control-attribution")', self.script)
+        self.assertIn("creditHeight + MAP_SCALE_CREDIT_GAP", self.script)
+        self.assertIn("new ResizeObserver(syncMapScaleOffset)", self.script)
+        self.assertNotIn("timelineBounds.top", self.script)
 
     def test_home_returns_to_the_current_scope_without_changing_filters(self) -> None:
         start = self.script.index("function resetMapToScope()")

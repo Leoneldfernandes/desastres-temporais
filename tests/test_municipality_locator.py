@@ -21,9 +21,19 @@ class MunicipalityLocatorTests(unittest.TestCase):
             self.page.index('id="map"'),
             self.page.index('id="municipalityLocator"'),
         )
-        self.assertIn("top: 122px", self.styles)
-        self.assertIn("width: 44px", self.styles)
-        self.assertIn("height: 44px", self.styles)
+        self.assertLess(
+            self.page.index('id="municipalityLocator"'),
+            self.page.index('id="toggleFullscreen"'),
+        )
+        locator = re.search(
+            r"\.municipality-locator\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(locator)
+        self.assertIn("position: relative", locator.group("body"))
+        self.assertIn("width: 38px", self.styles)
+        self.assertIn("height: 38px", self.styles)
 
     def test_mobile_uses_a_wide_temporary_panel(self) -> None:
         mobile = re.search(
@@ -33,9 +43,9 @@ class MunicipalityLocatorTests(unittest.TestCase):
         )
         self.assertIsNotNone(mobile)
         self.assertIn(".municipality-locator", mobile.group("body"))
-        self.assertIn("left: 8px", mobile.group("body"))
+        self.assertIn("left: auto", mobile.group("body"))
         self.assertIn(".municipality-search-panel", mobile.group("body"))
-        self.assertIn("width: auto", mobile.group("body"))
+        self.assertIn("width: min(326px, calc(100vw - 32px))", mobile.group("body"))
         self.assertIn("min-height: 44px", mobile.group("body"))
 
     def test_search_is_accent_insensitive_and_limits_results(self) -> None:
@@ -69,6 +79,19 @@ class MunicipalityLocatorTests(unittest.TestCase):
         self.assertIn('detailButton.textContent = "Ver detalhes"', self.script)
         self.assertIn("openMunicipalityDetail(code)", self.script)
         self.assertIn("municipalityLocatorPopup.setContent", self.script)
+
+    def test_summary_waits_four_seconds_then_fades_without_losing_selection(self) -> None:
+        self.assertIn("const LOCATOR_POPUP_VISIBLE_MS = 4_000;", self.script)
+        self.assertIn("const LOCATOR_POPUP_FADE_MS = 700;", self.script)
+        self.assertIn('popupElement.classList.add("is-fading")', self.script)
+        self.assertIn('popupElement.addEventListener("pointerenter", clearMunicipalityPopupTimers)', self.script)
+        self.assertIn('popupElement.addEventListener("pointerleave", scheduleMunicipalityPopupAutoClose)', self.script)
+        self.assertIn(".municipality-locator-popup.is-fading", self.styles)
+        reset_start = self.script.index("function resetMapToScope()")
+        reset_end = self.script.index("function mapIsFullscreen()", reset_start)
+        reset = self.script[reset_start:reset_end]
+        self.assertIn("closeMunicipalityPopupImmediately()", reset)
+        self.assertNotIn("setLocatedMunicipality(null)", reset)
 
     def test_shared_link_restores_location_without_changing_detail_links(self) -> None:
         self.assertIn('params.get("localizar")', self.script)
