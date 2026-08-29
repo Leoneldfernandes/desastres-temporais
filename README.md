@@ -75,7 +75,16 @@ Cada atualização aprovada mantém permanentemente os dois relatórios em `docs
 - velocidades entre 1 mês a cada 2 segundos e 3 meses por segundo;
 - pausa automática ao ocultar a aba, mover o mapa ou abrir detalhes;
 - tabela virtualizada: todos os resultados permanecem disponíveis sem criar milhares de elementos na tela;
+- exportação do mês exibido ou da série histórica filtrada em XLSX, CSV, JSON e ZIP científico;
 - mapas de satélite, claro, ruas e fundo branco.
+
+## Exportar resultados
+
+O painel **Baixar dados** usa o mesmo resumo mensal já carregado pelo mapa. O recorte acompanha o contexto territorial da série temporal — Brasil, estado ou município — e as tipologias marcadas. É possível exportar somente o mês em exibição ou toda a série de janeiro de 1991 a dezembro de 2025.
+
+A unidade de cada linha é **mês × município ou unidade equivalente × tipologia**. Os arquivos incluem ocorrências, danos humanos detalhados e prejuízos econômicos em reais. O XLSX contém as abas `Dados`, `Filtros` e `Dicionário`; o ZIP científico contém CSV, metadados JSON, dicionário e instruções.
+
+Toda a geração acontece localmente no navegador. XLSX e ZIP são processados em uma tarefa separada da interface e usam compactação nativa quando disponível, sem enviar o recorte a servidores ou carregar bibliotecas externas. O arquivo registra a versão, a fonte, o SHA-256, a geração da base, os filtros e o horário da exportação.
 
 ## Publicar no GitHub Pages
 

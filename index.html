@@ -10,9 +10,10 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=a5ab9130b0d5">
+    <link rel="stylesheet" href="assets/css/app.css?v=88b3c544f710">
     <script defer src="assets/vendor/leaflet.js"></script>
-    <script defer src="assets/js/app.js?v=878c5a89e565"></script>
+    <script defer src="assets/js/export.js?v=cabac15401e9" data-export-worker="assets/js/export-worker.js?v=12478d4473b5"></script>
+    <script defer src="assets/js/app.js?v=e924d2ded357"></script>
   </head>
   <body>
     <a class="skip-link" href="#map">Ir para o mapa</a>
@@ -158,6 +159,21 @@
             A cor mostra a tipologia com mais danos humanos. Borda dourada indica mais de uma
             tipologia no município.
           </p>
+        </section>
+
+        <section class="panel export-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Resultados reutilizáveis</p>
+              <h2>Baixar dados</h2>
+            </div>
+          </div>
+          <p class="export-intro">
+            Exporte o recorte territorial e as tipologias selecionadas no mapa.
+          </p>
+          <button class="button export-open-button" type="button" id="openExport">
+            Baixar dados filtrados
+          </button>
         </section>
       </aside>
 
@@ -405,6 +421,57 @@
         </section>
       </aside>
     </main>
+
+    <div class="modal-backdrop is-hidden" id="exportModal" role="presentation">
+      <section class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Exportação científica</p>
+            <h2 id="exportTitle">Baixar dados filtrados</h2>
+          </div>
+          <button class="icon-button close-button" type="button" id="closeExport" aria-label="Fechar exportação">×</button>
+        </header>
+        <div class="export-modal-content">
+          <dl class="export-context">
+            <div><dt>Recorte territorial</dt><dd id="exportTerritory">—</dd></div>
+            <div><dt>Tipologias</dt><dd id="exportTypes">—</dd></div>
+            <div><dt>Linhas estimadas</dt><dd id="exportRowCount">—</dd></div>
+          </dl>
+
+          <fieldset class="export-options">
+            <legend>Período exportado</legend>
+            <label>
+              <input type="radio" name="exportPeriod" value="current" checked>
+              <span><strong>Mês em exibição</strong><small id="exportCurrentPeriod">—</small></span>
+            </label>
+            <label>
+              <input type="radio" name="exportPeriod" value="history">
+              <span><strong>Série histórica completa</strong><small id="exportHistoryPeriod">—</small></span>
+            </label>
+          </fieldset>
+
+          <label class="field export-format" for="exportFormat">
+            <span>Formato do arquivo</span>
+            <select id="exportFormat">
+              <option value="xlsx" selected>Excel (.xlsx) — recomendado</option>
+              <option value="csv">CSV (.csv)</option>
+              <option value="json">JSON (.json)</option>
+              <option value="zip">ZIP científico (.zip)</option>
+            </select>
+          </label>
+
+          <p class="export-note">
+            Unidade dos dados: mês × município ou unidade equivalente × tipologia. Valores
+            econômicos são mantidos em reais.
+          </p>
+          <p class="export-status" id="exportStatus" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="export-actions">
+          <button class="button secondary" type="button" id="cancelExport">Cancelar</button>
+          <button class="button export-confirm-button" type="button" id="confirmExport">Gerar arquivo</button>
+        </footer>
+      </section>
+    </div>
 
     <div class="modal-backdrop is-hidden" id="detailModal" role="presentation">
       <section class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">

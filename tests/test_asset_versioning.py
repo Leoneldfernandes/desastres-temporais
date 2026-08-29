@@ -8,6 +8,8 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 VERSIONED_ASSETS = (
     "assets/css/app.css",
+    "assets/js/export.js",
+    "assets/js/export-worker.js",
     "assets/js/app.js",
 )
 
@@ -25,6 +27,8 @@ class AssetReferenceParser(HTMLParser):
             self.references.append(str(attributes["href"]))
         if tag == "script" and attributes.get("src"):
             self.references.append(str(attributes["src"]))
+        if tag == "script" and attributes.get("data-export-worker"):
+            self.references.append(str(attributes["data-export-worker"]))
 
 
 class AssetVersioningTests(unittest.TestCase):
