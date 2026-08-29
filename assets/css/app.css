@@ -1056,12 +1056,12 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .temporal-analysis-header {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(180px, 220px) minmax(290px, auto);
+  grid-template-columns: minmax(300px, 1fr) minmax(165px, 200px) minmax(285px, auto);
   grid-template-areas:
     "heading information metrics"
     "contexts information metrics";
   align-items: center;
-  gap: 5px 12px;
+  gap: 5px 10px;
   margin-bottom: 7px;
 }
 
