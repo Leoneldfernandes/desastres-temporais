@@ -1052,16 +1052,16 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   backdrop-filter: blur(12px);
 }
 
-.timeline.is-analysis-expanded { max-width: 900px; }
+.timeline.is-analysis-expanded { max-width: 1040px; }
 
 .temporal-analysis-header {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(170px, 0.8fr) minmax(270px, auto);
+  grid-template-columns: minmax(320px, 1fr) minmax(180px, 220px) minmax(290px, auto);
   grid-template-areas:
     "heading information metrics"
     "contexts information metrics";
   align-items: center;
-  gap: 5px 10px;
+  gap: 5px 12px;
   margin-bottom: 7px;
 }
 
@@ -1127,12 +1127,25 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   gap: 5px;
 }
 
-.temporal-context-options { grid-area: contexts; }
+.temporal-context-options {
+  grid-area: contexts;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.temporal-context-options .temporal-option {
+  max-width: 150px;
+  line-height: 1.15;
+  white-space: normal;
+}
 
 .temporal-metric-options {
   grid-area: metrics;
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
+
+.temporal-metric-options .temporal-option { white-space: nowrap; }
 
 .temporal-option {
   min-height: 30px;
@@ -1821,6 +1834,9 @@ body.map-pseudo-fullscreen { overflow: hidden; }
       "metrics";
     gap: 8px;
   }
+
+  .temporal-context-options,
+  .temporal-metric-options { flex-wrap: wrap; }
 
   .temporal-metric-options { justify-content: flex-start; }
 
