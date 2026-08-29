@@ -619,7 +619,7 @@ input:focus-visible,
 .leaflet-control-scale {
   position: absolute;
   right: 0;
-  bottom: var(--map-bottom-controls-offset, 118px);
+  bottom: var(--map-scale-bottom, 22px);
   margin: 0 !important;
   transition: bottom 140ms ease;
 }
@@ -694,7 +694,9 @@ input:focus-visible,
   display: grid;
   justify-items: center;
   color: var(--text);
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.78));
+  filter:
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.95))
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.78));
   pointer-events: none;
 }
 
@@ -702,6 +704,7 @@ input:focus-visible,
   margin-top: 2px;
   font-size: 0.72rem;
   letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px #02070c;
 }
 
 .north-arrow {
@@ -731,15 +734,13 @@ input:focus-visible,
 body.map-pseudo-fullscreen { overflow: hidden; }
 
 .municipality-locator {
-  position: absolute;
-  z-index: 1000;
-  top: 122px;
-  right: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .municipality-search-toggle {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -784,8 +785,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .municipality-search-panel {
   position: absolute;
-  top: 0;
-  right: 52px;
+  top: 44px;
+  right: 0;
   width: 326px;
   max-height: min(52dvh, 360px);
   overflow-y: auto;
@@ -892,6 +893,16 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   border: 1px solid rgba(66, 214, 232, 0.45);
   background: rgba(5, 14, 25, 0.97);
   color: var(--text);
+}
+
+.leaflet-popup.municipality-locator-popup {
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+
+.leaflet-popup.municipality-locator-popup.is-fading {
+  opacity: 0;
+  transform: translateY(-5px);
+  pointer-events: none;
 }
 
 .leaflet-popup.municipality-locator-popup .leaflet-popup-content-wrapper {
@@ -1491,7 +1502,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(7, 17, 31, 0.55);
+  contain: paint;
+  background: #07111f;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
@@ -1521,7 +1533,12 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .virtual-head span:nth-last-child(-n + 2) { text-align: right; }
 
-.virtual-canvas { position: relative; }
+.virtual-canvas {
+  position: relative;
+  overflow: hidden;
+  background: #07111f;
+  isolation: isolate;
+}
 
 .virtual-row {
   position: absolute;
@@ -1530,10 +1547,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   height: 42px;
   padding: 0 8px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  background: #07111f;
   font-size: 0.68rem;
 }
 
-.virtual-row:hover { background: rgba(66, 214, 232, 0.055); }
+.virtual-row:hover { background: #0b2739; }
 
 .cell-name,
 .cell-type {
@@ -2067,6 +2085,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     height: 44px;
   }
 
+  .municipality-search-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
   .leaflet-top.leaflet-right { top: 50px; }
 
   .timeline-topline {
@@ -2106,11 +2129,10 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   }
 
   .municipality-locator {
-    top: 128px;
-    right: 8px;
-    left: 8px;
-    display: flex;
-    justify-content: flex-end;
+    top: auto;
+    right: auto;
+    left: auto;
+    display: block;
   }
 
   .north-indicator {
@@ -2119,9 +2141,10 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   }
 
   .municipality-search-panel {
-    right: 52px;
-    left: 0;
-    width: auto;
+    top: 52px;
+    right: 0;
+    left: auto;
+    width: min(326px, calc(100vw - 32px));
     max-height: min(46dvh, 300px);
   }
 

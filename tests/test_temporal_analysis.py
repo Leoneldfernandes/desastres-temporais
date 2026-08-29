@@ -168,22 +168,30 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn('!event.target.closest("#temporalMunicipality")', self.script)
         self.assertNotIn("dom.temporalMunicipality.disabled", self.script)
 
-    def test_map_credits_and_scale_follow_the_real_timeline_height(self) -> None:
-        self.assertIn("function syncMapControlOffset()", self.script)
-        self.assertIn("new ResizeObserver(syncMapControlOffset)", self.script)
-        self.assertIn("--map-bottom-controls-offset", self.script)
+    def test_map_scale_follows_credits_instead_of_timeline_height(self) -> None:
+        self.assertIn("function syncMapScaleOffset()", self.script)
+        self.assertIn("new ResizeObserver(syncMapScaleOffset)", self.script)
+        self.assertIn("--map-scale-bottom", self.script)
+        self.assertNotIn("timelineBounds", self.script)
         self.assertRegex(
             self.styles,
             r"\.leaflet-bottom\.leaflet-right\s*\{\s*bottom: 0;",
         )
         self.assertRegex(
             self.styles,
-            r"(?s)\.leaflet-control-scale\s*\{.*?bottom: var\(--map-bottom-controls-offset, 118px\)",
+            r"(?s)\.leaflet-control-scale\s*\{.*?bottom: var\(--map-scale-bottom, 22px\)",
         )
         self.assertRegex(
             self.styles,
             r"(?s)\.leaflet-control-attribution\s*\{.*?margin: 0 !important;",
         )
+
+    def test_chart_adds_internal_headroom_without_increasing_panel_height(self) -> None:
+        self.assertIn("const TEMPORAL_CHART_TOP = 30;", self.script)
+        self.assertIn("const top = TEMPORAL_CHART_TOP;", self.script)
+        self.assertIn("observedMaximum * 1.08", self.script)
+        self.assertIn(".temporal-chart-wrap", self.styles)
+        self.assertIn("height: 158px", self.styles)
 
     def test_chart_is_keyboard_accessible_and_fullscreen_compatible(self) -> None:
         self.assertIn('role="slider"', self.page)
