@@ -1054,13 +1054,18 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .timeline.is-analysis-expanded { max-width: 900px; }
 
-.temporal-analysis-heading {
-  display: flex;
+.temporal-analysis-header {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(170px, 0.8fr) minmax(270px, auto);
+  grid-template-areas:
+    "heading information metrics"
+    "contexts information metrics";
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 9px;
+  gap: 5px 10px;
+  margin-bottom: 7px;
 }
+
+.temporal-analysis-heading { grid-area: heading; }
 
 .temporal-analysis-heading strong,
 .temporal-analysis-heading span { display: block; }
@@ -1115,14 +1120,6 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   background: rgba(5, 14, 25, 0.78);
 }
 
-.temporal-analysis-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 7px;
-}
-
 .temporal-control-group {
   min-width: 0;
   display: flex;
@@ -1130,7 +1127,12 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   gap: 5px;
 }
 
-.temporal-metric-options { justify-content: flex-end; }
+.temporal-context-options { grid-area: contexts; }
+
+.temporal-metric-options {
+  grid-area: metrics;
+  justify-content: flex-end;
+}
 
 .temporal-option {
   min-height: 30px;
@@ -1217,11 +1219,9 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 }
 
 .temporal-chart-tooltip {
-  position: absolute;
-  z-index: 2;
-  top: 7px;
-  right: 7px;
-  max-width: min(230px, 48%);
+  grid-area: information;
+  min-width: 0;
+  max-width: none;
   padding: 6px 8px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
@@ -1808,15 +1808,18 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     overscroll-behavior: contain;
   }
 
-  .temporal-analysis-heading { margin-bottom: 8px; }
-
   .temporal-analysis-heading span { max-width: 52vw; }
 
   .temporal-analysis-toggle { min-height: 44px; }
 
-  .temporal-analysis-controls {
-    align-items: stretch;
-    flex-direction: column;
+  .temporal-analysis-header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "heading"
+      "contexts"
+      "information"
+      "metrics";
+    gap: 8px;
   }
 
   .temporal-metric-options { justify-content: flex-start; }
@@ -1824,8 +1827,6 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   .temporal-option { min-height: 44px; }
 
   .temporal-chart-wrap { height: 172px; }
-
-  .temporal-chart-tooltip { max-width: 58%; }
 
   .map-stage.temporal-analysis-open .leaflet-bottom.leaflet-right { display: none; }
 
