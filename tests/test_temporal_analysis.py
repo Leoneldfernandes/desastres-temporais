@@ -91,7 +91,7 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertLess(header, information)
         self.assertLess(information, chart)
         self.assertIn('grid-template-areas:', self.styles)
-        self.assertIn('"heading information metrics"', self.styles)
+        self.assertIn('"heading information ."', self.styles)
         self.assertIn('"contexts information metrics"', self.styles)
         tooltip_style = re.search(
             r"\.temporal-chart-tooltip\s*\{(?P<body>.*?)\n\}",
@@ -101,6 +101,27 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIsNotNone(tooltip_style)
         self.assertIn("grid-area: information", tooltip_style.group("body"))
         self.assertNotIn("position: absolute", tooltip_style.group("body"))
+
+    def test_desktop_controls_stay_linear_around_the_information_panel(self) -> None:
+        self.assertIn(".timeline.is-analysis-expanded { max-width: 1040px; }", self.styles)
+        context_style = re.search(
+            r"\.temporal-context-options\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        metric_style = re.search(
+            r"\.temporal-metric-options\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(context_style)
+        self.assertIsNotNone(metric_style)
+        self.assertIn("grid-area: contexts", context_style.group("body"))
+        self.assertIn("grid-area: metrics", metric_style.group("body"))
+        self.assertIn("grid-template-columns: repeat(3, minmax(0, 1fr))", self.styles)
+        self.assertIn("height: 44px", self.styles)
+        self.assertIn("overflow-wrap: anywhere", self.styles)
+        self.assertIn("place-items: center", self.styles)
 
     def test_chart_defaults_to_collapsed_and_keeps_touch_targets(self) -> None:
         self.assertIn('const temporalExpanded = params.get("grafico") === "aberto"', self.script)
@@ -115,20 +136,26 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIsNotNone(mobile)
         self.assertIn(".temporal-analysis-header", mobile.group("body"))
         self.assertIn('"information"', mobile.group("body"))
+        self.assertIn(".temporal-context-options", mobile.group("body"))
+        self.assertIn("flex-wrap: wrap", mobile.group("body"))
         self.assertIn(".temporal-analysis-toggle", mobile.group("body"))
         self.assertIn(".temporal-option", mobile.group("body"))
         self.assertGreaterEqual(mobile.group("body").count("min-height: 44px"), 2)
         self.assertIn("overflow-y: auto", mobile.group("body"))
 
-    def test_playback_speed_and_series_toggle_share_one_control_row(self) -> None:
-        self.assertIn('class="playback-tools"', self.page)
-        playback = self.page.index('class="playback-tools"')
-        player = self.page.index('class="player-controls"', playback)
-        speed = self.page.index('class="field speed-field"', playback)
-        toggle = self.page.index('id="toggleTemporalAnalysis"', playback)
+    def test_playback_is_centered_between_balanced_side_columns(self) -> None:
+        period = self.page.index('class="period-share"')
+        player = self.page.index('class="player-controls"')
+        settings = self.page.index('class="playback-settings"')
+        speed = self.page.index('class="field speed-field"', settings)
+        toggle = self.page.index('id="toggleTemporalAnalysis"', settings)
+        self.assertLess(period, player)
+        self.assertLess(player, settings)
         self.assertLess(player, speed)
         self.assertLess(speed, toggle)
-        self.assertIn('grid-template-areas: "period playback"', self.styles)
+        self.assertIn("grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)", self.styles)
+        self.assertIn('grid-template-areas: "period player settings"', self.styles)
+        self.assertIn("justify-self: center", self.styles)
         self.assertIn("gap: 8px", self.styles)
 
     def test_missing_municipality_opens_the_existing_locator(self) -> None:
