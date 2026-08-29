@@ -110,20 +110,20 @@ Na interface, as tipologias são apresentadas uma única vez em três grupos de 
 
 ### 5.1. Identidade cromática, magnitude e acessibilidade
 
-A cor de preenchimento identifica a tipologia predominante no município e no mês. A paleta é categórica: não representa ordem, gravidade ou pertencimento aos três grupos de navegação. A decisão de não formar famílias de tons por grupo preserva a maior distinção possível entre 16 categorias simultâneas. Permanecem três associações semânticas intuitivas: Onda de Frio em azul-claro, Onda de Calor e Baixa Umidade em laranja e Incêndio Florestal em vermelho. Enxurradas usa marrom sedimentar, enquanto Alagamentos, Chuvas Intensas e Inundações usam, respectivamente, ciano, azul vivo e azul marinho profundo.
+A cor de preenchimento identifica a tipologia predominante no município e no mês. A paleta é categórica: não representa ordem, gravidade ou pertencimento aos três grupos de navegação. A decisão de não formar famílias de tons por grupo preserva a maior distinção possível entre 16 categorias simultâneas. Permanecem três associações semânticas intuitivas: Onda de Frio em azul-claro, Onda de Calor e Baixa Umidade em laranja e Incêndio Florestal em vermelho. Movimento de Massa usa marrom sedimentar, enquanto Alagamentos, Chuvas Intensas e Inundações usam, respectivamente, ciano, azul vivo e azul marinho profundo.
 
 | Tipologia | Cor |
 | --- | --- |
 | Alagamentos | `#00B8D9` |
 | Chuvas Intensas | `#2979FF` |
 | Doenças infecciosas | `#D45A9B` |
-| Enxurradas | `#A96B3B` |
+| Enxurradas | `#B2B250` |
 | Erosão | `#A1887F` |
 | Estiagem e Seca | `#F9A825` |
 | Granizo | `#B0BEC5` |
 | Incêndio Florestal | `#C62828` |
 | Inundações | `#005B96` |
-| Movimento de Massa | `#B2B250` |
+| Movimento de Massa | `#A96B3B` |
 | Onda de Calor e Baixa Umidade | `#D95F02` |
 | Onda de Frio | `#80DEEA` |
 | Outros | `#4B5563` |
