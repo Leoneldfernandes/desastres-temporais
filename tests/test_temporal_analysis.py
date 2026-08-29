@@ -84,6 +84,24 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn('valueText = "Sem valor positivo registrado"', self.script)
         self.assertNotIn("zero declarado", self.script.lower())
 
+    def test_month_information_uses_the_free_header_area_instead_of_covering_chart(self) -> None:
+        header = self.page.index('class="temporal-analysis-header"')
+        information = self.page.index('id="temporalChartTooltip"', header)
+        chart = self.page.index('class="temporal-chart-wrap"', information)
+        self.assertLess(header, information)
+        self.assertLess(information, chart)
+        self.assertIn('grid-template-areas:', self.styles)
+        self.assertIn('"heading information metrics"', self.styles)
+        self.assertIn('"contexts information metrics"', self.styles)
+        tooltip_style = re.search(
+            r"\.temporal-chart-tooltip\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(tooltip_style)
+        self.assertIn("grid-area: information", tooltip_style.group("body"))
+        self.assertNotIn("position: absolute", tooltip_style.group("body"))
+
     def test_chart_defaults_to_collapsed_and_keeps_touch_targets(self) -> None:
         self.assertIn('const temporalExpanded = params.get("grafico") === "aberto"', self.script)
         self.assertIn('id="temporalAnalysis" hidden', self.page)
@@ -95,6 +113,8 @@ class TemporalAnalysisTests(unittest.TestCase):
             flags=re.DOTALL,
         )
         self.assertIsNotNone(mobile)
+        self.assertIn(".temporal-analysis-header", mobile.group("body"))
+        self.assertIn('"information"', mobile.group("body"))
         self.assertIn(".temporal-analysis-toggle", mobile.group("body"))
         self.assertIn(".temporal-option", mobile.group("body"))
         self.assertGreaterEqual(mobile.group("body").count("min-height: 44px"), 2)
