@@ -1056,11 +1056,11 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .temporal-analysis-header {
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(165px, 200px) minmax(285px, auto);
+  grid-template-columns: minmax(300px, 1fr) minmax(175px, 220px) minmax(300px, 1fr);
   grid-template-areas:
-    "heading information metrics"
+    "heading information ."
     "contexts information metrics";
-  align-items: center;
+  align-items: end;
   gap: 5px 10px;
   margin-bottom: 7px;
 }
@@ -1129,23 +1129,32 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .temporal-context-options {
   grid-area: contexts;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.temporal-context-options .temporal-option {
-  max-width: 150px;
-  line-height: 1.15;
-  white-space: normal;
 }
 
 .temporal-metric-options {
   grid-area: metrics;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
 }
 
-.temporal-metric-options .temporal-option { white-space: nowrap; }
+.temporal-context-options,
+.temporal-metric-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-self: end;
+  gap: 5px;
+}
+
+.temporal-context-options .temporal-option,
+.temporal-metric-options .temporal-option {
+  width: 100%;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 4px 5px;
+  overflow-wrap: anywhere;
+  line-height: 1.08;
+  text-align: center;
+  white-space: normal;
+}
 
 .temporal-option {
   min-height: 30px;
@@ -1234,8 +1243,13 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .temporal-chart-tooltip {
   grid-area: information;
   min-width: 0;
+  min-height: 68px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-self: stretch;
   max-width: none;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
   background: rgba(8, 28, 45, 0.96);
@@ -1278,10 +1292,9 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .timeline-topline {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "period playback";
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "period player settings";
   align-items: end;
-  justify-content: space-between;
   gap: 10px;
 }
 
@@ -1302,11 +1315,13 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 }
 
 .player-controls {
+  grid-area: player;
+  justify-self: center;
   gap: 7px;
 }
 
-.playback-tools {
-  grid-area: playback;
+.playback-settings {
+  grid-area: settings;
   display: flex;
   align-items: end;
   justify-content: flex-end;
@@ -1836,7 +1851,10 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   }
 
   .temporal-context-options,
-  .temporal-metric-options { flex-wrap: wrap; }
+  .temporal-metric-options {
+    display: flex;
+    flex-wrap: wrap;
+  }
 
   .temporal-metric-options { justify-content: flex-start; }
 
@@ -1863,7 +1881,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
     grid-template-columns: 1fr;
     grid-template-areas:
       "period"
-      "playback"
+      "player"
+      "settings"
       "share";
   }
 
@@ -1871,9 +1890,12 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
   .period-display { grid-area: period; }
 
-  .player-controls { justify-content: center; }
+  .player-controls {
+    justify-self: center;
+    justify-content: center;
+  }
 
-  .playback-tools {
+  .playback-settings {
     justify-content: center;
     flex-wrap: wrap;
   }
