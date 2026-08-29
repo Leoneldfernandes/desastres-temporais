@@ -1,4 +1,4 @@
-/* global L */
+/* global L, AtlasExport */
 
 "use strict";
 
@@ -152,6 +152,18 @@ const dom = Object.fromEntries(
     "typeList",
     "selectAllTypes",
     "clearAllTypes",
+    "openExport",
+    "exportModal",
+    "closeExport",
+    "cancelExport",
+    "confirmExport",
+    "exportTerritory",
+    "exportTypes",
+    "exportRowCount",
+    "exportCurrentPeriod",
+    "exportHistoryPeriod",
+    "exportFormat",
+    "exportStatus",
     "loadingOverlay",
     "loadingTitle",
     "loadingMessage",
@@ -240,6 +252,8 @@ const state = {
   locatedMunicipalityCode: null,
   urlSyncReady: false,
   shareFeedbackTimer: null,
+  exportGenerating: false,
+  exportReturnFocus: null,
   pseudoFullscreen: false,
   temporalContext: "brazil",
   temporalStateUF: null,
@@ -549,6 +563,254 @@ async function shareCurrentView() {
     dom.shareView.classList.remove("is-copied");
     dom.shareViewLabel.textContent = "Compartilhar visualização";
   }, 2200);
+}
+
+function exportTerritory() {
+  if (state.temporalContext === "municipality" && state.temporalMunicipalityCode) {
+    const meta = state.municipalityByCode.get(state.temporalMunicipalityCode);
+    if (meta) {
+      return {
+        kind: "municipality",
+        code: meta.code,
+        uf: meta.uf,
+        label: `Município · ${meta.name} — ${meta.uf}`,
+        filename: `${meta.uf}_${meta.code}`,
+      };
+    }
+  }
+  const selectedUf = state.temporalContext === "state"
+    ? state.temporalStateUF
+    : state.scopeUF !== "BR"
+      ? state.scopeUF
+      : null;
+  if (selectedUf && Object.hasOwn(UF_NAMES, selectedUf)) {
+    return {
+      kind: "state",
+      uf: selectedUf,
+      label: `Estado · ${UF_NAMES[selectedUf]} — ${selectedUf}`,
+      filename: selectedUf,
+    };
+  }
+  return { kind: "brazil", label: "Brasil", filename: "BR" };
+}
+
+function exportPeriodMode() {
+  return document.querySelector('input[name="exportPeriod"]:checked')?.value === "history"
+    ? "history"
+    : "current";
+}
+
+function rowMatchesExport(row, territory) {
+  if (!state.activeTypes.has(row[SUMMARY.type])) return false;
+  const code = String(row[SUMMARY.code]);
+  const meta = state.municipalityByCode.get(code);
+  if (!meta) return false;
+  if (territory.kind === "municipality") return code === territory.code;
+  if (territory.kind === "state") return meta.uf === territory.uf;
+  return true;
+}
+
+function collectExportRows(mode = exportPeriodMode()) {
+  const territory = exportTerritory();
+  const periodIndexes = mode === "history"
+    ? state.periods.map((_, index) => index)
+    : [state.currentPeriod];
+  const rows = [];
+
+  for (const periodIndex of periodIndexes) {
+    const period = state.periods[periodIndex];
+    const [year, month] = period.split("-").map(Number);
+    for (const source of state.summaryByPeriod[periodIndex]) {
+      if (!rowMatchesExport(source, territory)) continue;
+      const meta = state.municipalityByCode.get(String(source[SUMMARY.code]));
+      const publicLoss = source[SUMMARY.publicLoss];
+      const privateLoss = source[SUMMARY.privateLoss];
+      rows.push({
+        periodo: period,
+        ano: year,
+        mes: month,
+        codigo_ibge: meta.code,
+        municipio: meta.name,
+        uf: meta.uf,
+        tipologia: state.types[source[SUMMARY.type]].name,
+        ocorrencias: source[SUMMARY.events],
+        danos_humanos_total: source[SUMMARY.human],
+        mortos: source[SUMMARY.deaths],
+        feridos: source[SUMMARY.injured],
+        enfermos: source[SUMMARY.sick],
+        desabrigados: source[SUMMARY.homeless],
+        desalojados: source[SUMMARY.displaced],
+        desaparecidos: source[SUMMARY.missing],
+        afetados_seca_estiagem: source[SUMMARY.drought],
+        outros_afetados: source[SUMMARY.other],
+        prejuizo_publico_reais: publicLoss,
+        prejuizo_privado_reais: privateLoss,
+        prejuizo_total_reais: publicLoss + privateLoss,
+      });
+    }
+  }
+  return rows;
+}
+
+function exportMetadata(rows, mode) {
+  const territory = exportTerritory();
+  const selectedTypes = [...state.activeTypes]
+    .sort((a, b) => a - b)
+    .map((typeId) => state.types[typeId].name);
+  const firstPeriod = mode === "history" ? state.periods[0] : state.periods[state.currentPeriod];
+  const lastPeriod = mode === "history" ? state.periods.at(-1) : firstPeriod;
+  return {
+    titulo: "Dados filtrados — Desastres no tempo",
+    autor: "Leonel Delmiro Fernandes",
+    gerado_em: new Date().toISOString(),
+    fonte: "Atlas Digital de Desastres no Brasil — Sedec/MIDR",
+    fonte_url: state.manifest.sourceUrl,
+    fonte_versao: state.manifest.version,
+    fonte_sha256: state.manifest.sourceSha256 || "não informado no manifesto",
+    base_gerada_em: state.manifest.generatedAt,
+    recorte_territorial: territory.label,
+    periodo_exportado: firstPeriod === lastPeriod ? firstPeriod : `${firstPeriod} a ${lastPeriod}`,
+    tipologias: selectedTypes,
+    quantidade_linhas: rows.length,
+    unidade_observacao: "mês × município ou unidade equivalente × tipologia",
+    unidade_prejuizos: "reais (R$)",
+    tratamento: "Dados agregados sem correção ou reinterpretação durante a exportação. Células numéricas vazias da fonte foram tratadas na construção da base, conforme a metodologia publicada.",
+  };
+}
+
+function updateExportEstimate() {
+  if (!state.ready || dom.exportModal.classList.contains("is-hidden")) return;
+  const rows = collectExportRows();
+  dom.exportRowCount.textContent = formatInteger.format(rows.length);
+  dom.confirmExport.disabled = rows.length === 0 || state.exportGenerating;
+  dom.exportStatus.classList.toggle("is-error", rows.length === 0);
+  dom.exportStatus.textContent = rows.length === 0
+    ? "Nenhum registro corresponde aos filtros escolhidos."
+    : "";
+}
+
+function openExportDialog() {
+  if (!state.ready || state.exportGenerating) return;
+  const territory = exportTerritory();
+  const typeCount = state.activeTypes.size;
+  state.exportReturnFocus = document.activeElement;
+  dom.exportTerritory.textContent = territory.label;
+  dom.exportTypes.textContent = typeCount === state.types.length
+    ? "Todas as 16 tipologias"
+    : `${typeCount} ${typeCount === 1 ? "tipologia" : "tipologias"}`;
+  dom.exportCurrentPeriod.textContent = periodLabel(state.periods[state.currentPeriod]);
+  dom.exportHistoryPeriod.textContent = `${numericPeriodLabel(state.periods[0])} a ${numericPeriodLabel(
+    state.periods.at(-1)
+  )}`;
+  dom.exportModal.classList.remove("is-hidden");
+  addPlaybackBlock("export");
+  updateExportEstimate();
+  dom.closeExport.focus();
+}
+
+function closeExportDialog() {
+  if (state.exportGenerating || dom.exportModal.classList.contains("is-hidden")) return;
+  dom.exportModal.classList.add("is-hidden");
+  dom.exportStatus.textContent = "";
+  dom.exportStatus.classList.remove("is-error");
+  removePlaybackBlock("export");
+  if (state.exportReturnFocus instanceof HTMLElement) {
+    state.exportReturnFocus.focus({ preventScroll: true });
+  }
+  state.exportReturnFocus = null;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+function exportFilename(format, mode) {
+  const date = new Date();
+  const generated = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+  const period = mode === "history" ? `${state.periods[0]}_${state.periods.at(-1)}` : state.periods[state.currentPeriod];
+  return `desastres_${exportTerritory().filename}_${period}_${generated}.${format}`;
+}
+
+function generateExportBlob(format, rows, metadata) {
+  const fallback = () => {
+    if (format === "csv") {
+      return new Blob([AtlasExport.csvText(rows)], { type: "text/csv;charset=utf-8" });
+    }
+    if (format === "json") {
+      return new Blob([AtlasExport.jsonText(rows, metadata)], { type: "application/json" });
+    }
+    if (format === "zip") return AtlasExport.scientificPackageBlob(rows, metadata);
+    return AtlasExport.xlsxBlob(rows, metadata);
+  };
+  if (typeof Worker !== "function") return Promise.resolve(fallback());
+
+  const exporterScript = document.querySelector('script[src*="assets/js/export.js"]');
+  const workerPath = exporterScript?.dataset.exportWorker;
+  if (!exporterScript?.src || !workerPath) return Promise.resolve(fallback());
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL(workerPath, document.baseURI));
+    worker.addEventListener("message", (event) => {
+      if (event.data?.type === "progress") {
+        dom.exportStatus.textContent = event.data.message;
+      } else if (event.data?.type === "complete") {
+        worker.terminate();
+        resolve(event.data.blob);
+      } else if (event.data?.type === "error") {
+        worker.terminate();
+        reject(new Error(event.data.message));
+      }
+    });
+    worker.addEventListener("error", (event) => {
+      worker.terminate();
+      reject(new Error(event.message || "Falha no processamento da exportação."));
+    });
+    worker.postMessage({ exporterUrl: exporterScript.src, format, rows, metadata });
+  });
+}
+
+async function generateExport() {
+  if (state.exportGenerating) return;
+  const mode = exportPeriodMode();
+  const format = dom.exportFormat.value;
+  const rows = collectExportRows(mode);
+  if (!rows.length) {
+    updateExportEstimate();
+    return;
+  }
+
+  state.exportGenerating = true;
+  dom.confirmExport.disabled = true;
+  dom.cancelExport.disabled = true;
+  dom.closeExport.disabled = true;
+  dom.exportStatus.classList.remove("is-error");
+  dom.exportStatus.textContent = `Preparando ${formatInteger.format(rows.length)} linhas…`;
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+  try {
+    const metadata = exportMetadata(rows, mode);
+    const blob = await generateExportBlob(format, rows, metadata);
+    downloadBlob(blob, exportFilename(format, mode));
+    dom.exportStatus.textContent = "Arquivo gerado. O download foi iniciado.";
+  } catch (error) {
+    console.error(error);
+    dom.exportStatus.classList.add("is-error");
+    dom.exportStatus.textContent = "Não foi possível gerar o arquivo. Tente outro formato.";
+  } finally {
+    state.exportGenerating = false;
+    dom.cancelExport.disabled = false;
+    dom.closeExport.disabled = false;
+    updateExportEstimate();
+  }
 }
 
 function humanImpactBand(total) {
@@ -2000,6 +2262,16 @@ function bindEvents() {
   dom.typeList.addEventListener("change", handleTypeChange);
   dom.selectAllTypes.addEventListener("click", () => setAllTypes(true));
   dom.clearAllTypes.addEventListener("click", () => setAllTypes(false));
+  dom.openExport.addEventListener("click", openExportDialog);
+  dom.closeExport.addEventListener("click", closeExportDialog);
+  dom.cancelExport.addEventListener("click", closeExportDialog);
+  dom.confirmExport.addEventListener("click", generateExport);
+  dom.exportModal.addEventListener("click", (event) => {
+    if (event.target === dom.exportModal) closeExportDialog();
+  });
+  for (const input of document.querySelectorAll('input[name="exportPeriod"]')) {
+    input.addEventListener("change", updateExportEstimate);
+  }
   dom.previousPeriod.addEventListener("click", () => setPeriod(state.currentPeriod - 1));
   dom.nextPeriod.addEventListener("click", () => setPeriod(state.currentPeriod + 1));
   dom.shareView.addEventListener("click", shareCurrentView);
@@ -2088,6 +2360,10 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (!dom.exportModal.classList.contains("is-hidden")) {
+        closeExportDialog();
+        return;
+      }
       if (!dom.municipalitySearchPanel.hidden) {
         closeMunicipalitySearch(true);
         return;

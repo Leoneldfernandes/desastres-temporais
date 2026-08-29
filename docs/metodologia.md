@@ -192,6 +192,23 @@ A mesma verificação é executada automaticamente em todo pull request destinad
 
 Os JSON compactados usam ordem estável e gzip com data interna fixada em zero, o que favorece a reprodução de arquivos idênticos a partir das mesmas entradas e do mesmo código.
 
+### 9.1. Exportação dos resultados filtrados
+
+A exportação reutiliza `data/atlas-summary.json.gz`; ela não lê nem reconstrói o CSV bruto. A granularidade preservada é mês, código territorial e tipologia. O recorte territorial pode ser Brasil, estado ou município, e as tipologias correspondem às caixas marcadas na interface. O período pode ser o mês exibido ou a série histórica completa registrada no manifesto.
+
+As colunas exportadas são período, ano, mês, código IBGE, nome territorial, UF, tipologia, ocorrências, total de danos humanos, mortos, feridos, enfermos, desabrigados, desalojados, desaparecidos, afetados por seca/estiagem, outros afetados, prejuízo público, prejuízo privado e a soma dos dois prejuízos. Valores econômicos permanecem em reais e não recebem correção monetária.
+
+Os formatos disponíveis são:
+
+- XLSX, com abas de dados, filtros e dicionário;
+- CSV UTF-8 separado por ponto e vírgula;
+- JSON com metadados e dados;
+- ZIP científico com CSV, metadados JSON, dicionário e arquivo de instruções.
+
+Os metadados registram fonte, URL, versão, SHA-256, geração da base, horário da exportação, recorte, período, tipologias, linhas e unidades. A exportação não transforma ausências em zero: ela reproduz o resumo derivado. Conforme descrito na Seção 6, eventuais células numéricas vazias da fonte já foram convertidas em zero e contabilizadas no relatório durante a construção da base.
+
+CSV e JSON são construídos localmente. XLSX e ZIP são gerados em uma tarefa separada da interface, com compactação nativa quando disponível. Nenhum dado do recorte é transmitido a servidor externo.
+
 ## 10. Reprodutibilidade
 
 Requisitos: Python 3 e mapshaper 0.6.113.
