@@ -68,7 +68,7 @@ Cada atualização aprovada mantém permanentemente os dois relatórios em `docs
 - série mensal contínua indicada no manifesto, inclusive os meses sem registros;
 - mês do painel inferior e limites da barra temporal no formato `MM/AAAA`;
 - filtro territorial Brasil/UF;
-- 16 tipologias oficiais, cada uma com cor fixa;
+- 16 tipologias oficiais, cada uma com cor fixa, organizadas em três grupos de navegação;
 - cor municipal definida pela tipologia com mais danos humanos no mês;
 - desempate por quantidade de eventos e, depois, pela ordem estável das tipologias;
 - borda dourada para municípios com múltiplas tipologias;

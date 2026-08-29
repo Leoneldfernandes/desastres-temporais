@@ -89,6 +89,43 @@ const TEMPORAL_METRICS = Object.freeze({
   },
 });
 
+const TYPE_GROUPS = Object.freeze([
+  Object.freeze({
+    id: "hydrological",
+    label: "Hidrológicos",
+    typeNames: Object.freeze([
+      "Alagamentos",
+      "Chuvas Intensas",
+      "Enxurradas",
+      "Inundações",
+      "Movimento de Massa",
+    ]),
+  }),
+  Object.freeze({
+    id: "climate-weather",
+    label: "Climatológicos e Meteorológicos",
+    typeNames: Object.freeze([
+      "Estiagem e Seca",
+      "Tornado",
+      "Vendavais e Ciclones",
+      "Granizo",
+      "Onda de Frio",
+      "Onda de Calor e Baixa Umidade",
+      "Incêndio Florestal",
+    ]),
+  }),
+  Object.freeze({
+    id: "other",
+    label: "Outros",
+    typeNames: Object.freeze([
+      "Erosão",
+      "Doenças infecciosas",
+      "Rompimento/Colapso de barragens",
+      "Outros",
+    ]),
+  }),
+]);
+
 const ROW_HEIGHT = 42;
 const TABLE_HEADER_HEIGHT = 35;
 const EMPTY_STYLE = Object.freeze({
@@ -489,9 +526,10 @@ function viewStateFromUrl() {
 
 function applyTypeSelection(typeIds) {
   state.activeTypes = new Set(typeIds);
-  for (const input of dom.typeList.querySelectorAll('input[type="checkbox"]')) {
+  for (const input of dom.typeList.querySelectorAll("input[data-type-id]")) {
     input.checked = state.activeTypes.has(Number(input.value));
   }
+  syncTypeGroupStates();
 }
 
 function syncViewUrl() {
@@ -1026,17 +1064,57 @@ function buildUfSelector() {
 }
 
 function buildTypeFilters() {
-  dom.typeList.innerHTML = state.types
-    .map(
-      (type) => `
+  const typesByName = new Map(state.types.map((type) => [type.name, type]));
+  const groupedNames = new Set(TYPE_GROUPS.flatMap((group) => group.typeNames));
+  if (groupedNames.size !== state.types.length || state.types.some((type) => !groupedNames.has(type.name))) {
+    throw new Error("A organização dos grupos não corresponde às 16 tipologias oficiais.");
+  }
+
+  dom.typeList.innerHTML = TYPE_GROUPS.map((group) => {
+    const items = group.typeNames.map((name) => {
+      const type = typesByName.get(name);
+      if (!type) throw new Error(`Tipologia ausente no grupo ${group.label}: ${name}`);
+      return `
         <label class="type-item" title="${escapeHtml(type.name)}">
-          <input type="checkbox" value="${type.id}" checked>
+          <input type="checkbox" value="${type.id}" data-type-id="${type.id}" checked>
           <span class="type-swatch" style="background:${type.color}" aria-hidden="true"></span>
           <span>${escapeHtml(type.name)}</span>
           <span class="type-total">${formatCompact.format(type.events)}</span>
-        </label>`
-    )
-    .join("");
+        </label>`;
+    }).join("");
+
+    return `
+      <section class="type-group" data-type-group-section="${group.id}" aria-labelledby="type-group-${group.id}">
+        <label class="type-group-toggle" id="type-group-${group.id}">
+          <input type="checkbox" value="${group.id}" data-type-group="${group.id}" checked>
+          <span>${escapeHtml(group.label)}</span>
+          <span class="type-group-count" data-type-group-count="${group.id}">${group.typeNames.length}/${group.typeNames.length}</span>
+        </label>
+        <div class="type-group-items">${items}</div>
+      </section>`;
+  }).join("");
+  syncTypeGroupStates();
+}
+
+function typeIdsForGroup(groupId) {
+  const group = TYPE_GROUPS.find((candidate) => candidate.id === groupId);
+  if (!group) return [];
+  const idsByName = new Map(state.types.map((type) => [type.name, type.id]));
+  return group.typeNames.map((name) => idsByName.get(name)).filter(Number.isInteger);
+}
+
+function syncTypeGroupStates() {
+  for (const group of TYPE_GROUPS) {
+    const input = dom.typeList.querySelector(`input[data-type-group="${group.id}"]`);
+    const count = dom.typeList.querySelector(`[data-type-group-count="${group.id}"]`);
+    if (!input || !count) continue;
+    const typeIds = typeIdsForGroup(group.id);
+    const selected = typeIds.filter((typeId) => state.activeTypes.has(typeId)).length;
+    input.checked = selected === typeIds.length;
+    input.indeterminate = selected > 0 && selected < typeIds.length;
+    count.textContent = `${selected}/${typeIds.length}`;
+    input.setAttribute("aria-label", `${group.label}: ${selected} de ${typeIds.length} selecionadas`);
+  }
 }
 
 function layerStyle(aggregate, hovered = false, located = false) {
@@ -2219,20 +2297,31 @@ async function changeScope(nextUf) {
 }
 
 function setAllTypes(checked) {
-  for (const input of dom.typeList.querySelectorAll('input[type="checkbox"]')) {
-    input.checked = checked;
-  }
-  state.activeTypes = checked ? new Set(state.types.map((type) => type.id)) : new Set();
+  applyTypeSelection(checked ? state.types.map((type) => type.id) : []);
   refreshTemporalSeries();
   setPeriod(state.currentPeriod);
 }
 
-function handleTypeChange() {
+function handleTypeChange(event) {
+  const groupId = event.target.dataset.typeGroup;
+  if (groupId) {
+    const nextSelection = new Set(state.activeTypes);
+    for (const typeId of typeIdsForGroup(groupId)) {
+      if (event.target.checked) nextSelection.add(typeId);
+      else nextSelection.delete(typeId);
+    }
+    applyTypeSelection(nextSelection);
+    refreshTemporalSeries();
+    setPeriod(state.currentPeriod);
+    return;
+  }
+
   state.activeTypes = new Set(
-    [...dom.typeList.querySelectorAll('input[type="checkbox"]:checked')].map((input) =>
+    [...dom.typeList.querySelectorAll("input[data-type-id]:checked")].map((input) =>
       Number(input.value)
     )
   );
+  syncTypeGroupStates();
   refreshTemporalSeries();
   setPeriod(state.currentPeriod);
 }

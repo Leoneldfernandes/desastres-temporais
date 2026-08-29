@@ -106,6 +106,8 @@ O projeto aceita exatamente as 16 tipologias presentes na versão publicada:
 
 Uma tipologia desconhecida ou a ausência completa de uma das 16 categorias interrompe a construção. O projeto não reclassifica os registros.
 
+Na interface, as tipologias são apresentadas uma única vez em três grupos de navegação: **Hidrológicos**, **Climatológicos e Meteorológicos** e **Outros**. Essa organização serve somente para facilitar a seleção coletiva e individual. Ela não cria uma nova variável, não altera a tipologia armazenada e não substitui o campo de grupo existente na fonte oficial. Links compartilháveis, cálculos e exportações continuam sendo definidos pelas 16 tipologias originais.
+
 ## 6. Variáveis e agregação
 
 O resumo usado no mapa possui uma linha para cada combinação observada de **mês × código territorial × tipologia**.
