@@ -10,7 +10,7 @@
     >
     <title>Atlas Espaço-Temporal de Desastres</title>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=68016f44238f">
+    <link rel="stylesheet" href="assets/css/app.css?v=9ba89bab8aab">
     <script defer src="assets/vendor/leaflet.js"></script>
     <script defer src="assets/js/app.js?v=878c5a89e565"></script>
   </head>
@@ -247,14 +247,14 @@
 
         <section class="timeline" id="timelinePanel" aria-label="Linha temporal">
           <div class="temporal-analysis" id="temporalAnalysis" hidden>
-            <div class="temporal-analysis-heading">
-              <div>
-                <strong>Evolução temporal</strong>
-                <span id="temporalContextLabel">Brasil · 16 tipologias</span>
+            <div class="temporal-analysis-header">
+              <div class="temporal-analysis-heading">
+                <div>
+                  <strong>Evolução temporal</strong>
+                  <span id="temporalContextLabel">Brasil · 16 tipologias</span>
+                </div>
               </div>
-            </div>
-            <div class="temporal-analysis-controls">
-              <div class="temporal-control-group" role="group" aria-label="Nível da análise temporal">
+              <div class="temporal-control-group temporal-context-options" role="group" aria-label="Nível da análise temporal">
                 <button
                   class="temporal-option is-active"
                   id="temporalBrazil"
@@ -277,6 +277,7 @@
                   aria-pressed="false"
                 >Selecionar município</button>
               </div>
+              <div class="temporal-chart-tooltip" id="temporalChartTooltip" aria-hidden="true"></div>
               <div class="temporal-control-group temporal-metric-options" role="group" aria-label="Indicador temporal">
                 <button
                   class="temporal-option is-active"
@@ -310,7 +311,6 @@
                 aria-valuenow="0"
                 aria-valuetext="Janeiro de 1991"
               ></svg>
-              <div class="temporal-chart-tooltip" id="temporalChartTooltip" aria-hidden="true"></div>
             </div>
             <p class="temporal-chart-status" id="temporalChartStatus" aria-live="polite"></p>
           </div>
