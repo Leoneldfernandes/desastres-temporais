@@ -1499,7 +1499,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
   position: relative;
   min-height: 130px;
   flex: 1;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
   contain: paint;
@@ -1511,9 +1512,9 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 .virtual-head,
 .virtual-row {
   display: grid;
-  grid-template-columns: minmax(92px, 1.15fr) minmax(96px, 1.3fr) 44px 66px;
+  grid-template-columns: minmax(70px, 1.05fr) minmax(78px, 1.2fr) 43px 56px;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
 }
 
 .virtual-head {
@@ -1535,7 +1536,8 @@ body.map-pseudo-fullscreen { overflow: hidden; }
 
 .virtual-canvas {
   position: relative;
-  overflow: hidden;
+  min-width: 0;
+  overflow: visible;
   background: #07111f;
   isolation: isolate;
 }
