@@ -102,6 +102,25 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIn("grid-area: information", tooltip_style.group("body"))
         self.assertNotIn("position: absolute", tooltip_style.group("body"))
 
+    def test_desktop_controls_stay_linear_around_the_information_panel(self) -> None:
+        self.assertIn(".timeline.is-analysis-expanded { max-width: 1040px; }", self.styles)
+        context_style = re.search(
+            r"\.temporal-context-options\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        metric_style = re.search(
+            r"\.temporal-metric-options\s*\{(?P<body>.*?)\n\}",
+            self.styles,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(context_style)
+        self.assertIsNotNone(metric_style)
+        self.assertIn("flex-wrap: nowrap", context_style.group("body"))
+        self.assertIn("flex-wrap: nowrap", metric_style.group("body"))
+        self.assertIn("white-space: normal", self.styles)
+        self.assertIn(".temporal-metric-options .temporal-option { white-space: nowrap; }", self.styles)
+
     def test_chart_defaults_to_collapsed_and_keeps_touch_targets(self) -> None:
         self.assertIn('const temporalExpanded = params.get("grafico") === "aberto"', self.script)
         self.assertIn('id="temporalAnalysis" hidden', self.page)
@@ -115,6 +134,8 @@ class TemporalAnalysisTests(unittest.TestCase):
         self.assertIsNotNone(mobile)
         self.assertIn(".temporal-analysis-header", mobile.group("body"))
         self.assertIn('"information"', mobile.group("body"))
+        self.assertIn(".temporal-context-options", mobile.group("body"))
+        self.assertIn("flex-wrap: wrap", mobile.group("body"))
         self.assertIn(".temporal-analysis-toggle", mobile.group("body"))
         self.assertIn(".temporal-option", mobile.group("body"))
         self.assertGreaterEqual(mobile.group("body").count("min-height: 44px"), 2)
