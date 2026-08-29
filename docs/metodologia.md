@@ -108,6 +108,35 @@ Uma tipologia desconhecida ou a ausência completa de uma das 16 categorias inte
 
 Na interface, as tipologias são apresentadas uma única vez em três grupos de navegação: **Hidrológicos**, **Climatológicos e Meteorológicos** e **Outros**. Essa organização serve somente para facilitar a seleção coletiva e individual. Ela não cria uma nova variável, não altera a tipologia armazenada e não substitui o campo de grupo existente na fonte oficial. Links compartilháveis, cálculos e exportações continuam sendo definidos pelas 16 tipologias originais.
 
+### 5.1. Identidade cromática, magnitude e acessibilidade
+
+A cor de preenchimento identifica a tipologia predominante no município e no mês. A paleta é categórica: não representa ordem, gravidade ou pertencimento aos três grupos de navegação. A decisão de não formar famílias de tons por grupo preserva a maior distinção possível entre 16 categorias simultâneas. Permanecem três associações semânticas intuitivas: Onda de Frio em azul-claro, Onda de Calor e Baixa Umidade em laranja e Incêndio Florestal em vermelho. Enxurradas usa marrom sedimentar, enquanto Alagamentos, Chuvas Intensas e Inundações usam, respectivamente, ciano, azul vivo e azul marinho profundo.
+
+| Tipologia | Cor |
+| --- | --- |
+| Alagamentos | `#00B8D9` |
+| Chuvas Intensas | `#2979FF` |
+| Doenças infecciosas | `#D45A9B` |
+| Enxurradas | `#A96B3B` |
+| Erosão | `#A1887F` |
+| Estiagem e Seca | `#F9A825` |
+| Granizo | `#B0BEC5` |
+| Incêndio Florestal | `#C62828` |
+| Inundações | `#005B96` |
+| Movimento de Massa | `#B2B250` |
+| Onda de Calor e Baixa Umidade | `#D95F02` |
+| Onda de Frio | `#80DEEA` |
+| Outros | `#4B5563` |
+| Rompimento/Colapso de barragens | `#8E245A` |
+| Tornado | `#5E35B1` |
+| Vendavais e Ciclones | `#00897B` |
+
+A magnitude dos danos humanos não altera matiz nem saturação. Ela é comunicada pela espessura do contorno em quatro faixas fixas: **1–99**, **100–999**, **1.000–9.999** e **10.000 ou mais**. O valor zero mantém preenchimento transparente e contorno neutro; assim, ausência de valor positivo não recebe uma cor de tipologia. Quando há mais de uma tipologia no mesmo território e mês, o contorno tracejado acrescenta uma indicação que não depende da cor.
+
+Os prejuízos econômicos mantêm as faixas **até R$ 100 mil**, **R$ 100 mil a R$ 1 milhão**, **R$ 1 milhão a R$ 10 milhões** e **acima de R$ 10 milhões**. Somente a identidade visual foi revista: a sequência `#FFFFB2`, `#FECC5C`, `#FD8D3C` e `#E31A1C` passa progressivamente do amarelo-claro ao vermelho, sem misturar uma escala divergente com uma variável exclusivamente crescente.
+
+A auditoria converte sRGB para RGB linear, aplica as matrizes de simulação de protanopia, deuteranopia e tritanopia de Machado, Oliveira e Fernandes (2009) e compara as cores no espaço CIELAB. Com 16 categorias, nenhuma paleta garante separação perfeita para todas as pessoas e todos os fundos. Por isso, filtros, legendas, resumos e detalhes preservam o nome textual da tipologia; a interpretação não depende exclusivamente da cor. Os valores exatos ficam sincronizados entre o gerador e o manifesto por teste automatizado.
+
 ## 6. Variáveis e agregação
 
 O resumo usado no mapa possui uma linha para cada combinação observada de **mês × código territorial × tipologia**.
@@ -244,9 +273,13 @@ Para citar um resultado reproduzido, recomenda-se registrar conjuntamente: vers�
 - O mês é determinado pelo início informado do evento. Atrasos ou anomalias de registro não deslocam o evento para outro mês.
 - Os prejuízos seguem os valores fornecidos pela fonte; este projeto não realiza correção monetária adicional nem altera o tratamento econômico adotado pelo Atlas.
 - Registros associados à mesma tipologia e ao mesmo município podem representar eventos distintos; o protocolo S2iD é a chave usada para distinguir cada ocorrência.
+- A percepção de cores varia entre pessoas, monitores, brilho e mapas-base. As simulações de deficiência de visão de cores são uma aproximação e não substituem testes com usuários; nomes, contornos e padrões permanecem necessários.
 
 ## 12. Referências oficiais
 
 - BRASIL. Ministério da Integração e do Desenvolvimento Regional. [Atlas Digital de Desastres no Brasil](https://atlasdigital.mdr.gov.br/). A edição efetivamente utilizada consta no manifesto e no relatório de atualização.
 - BRASIL. Ministério da Integração e do Desenvolvimento Regional. [MIDR atualiza Atlas Digital de Desastres com dados consolidados até 2025](https://www.gov.br/mdr/pt-br/noticias/midr-atualiza-atlas-digital-de-desastres-com-dados-consolidados-ate-2025). 26 maio 2026.
 - IBGE — Instituto Brasileiro de Geografia e Estatística. [Malha Municipal Digital 2025](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html). Acesso em 26 ago. 2026.
+- GLASBEY, C.; HEIJNEN, P.; TORSTENSON, M. Colour displays for categorical images. *Color Research & Application*, v. 32, n. 4, 2007. [DOI 10.1002/col.20327](https://doi.org/10.1002/col.20327).
+- MACHADO, G.; OLIVEIRA, M.; FERNANDES, L. A physiologically-based model for simulation of color vision deficiency. *IEEE Transactions on Visualization and Computer Graphics*, v. 15, n. 6, 2009. [Material dos autores](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html).
+- W3C — World Wide Web Consortium. [WCAG 2.1 — Understanding Success Criterion 1.4.1: Use of Color](https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html).
