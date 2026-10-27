@@ -2,7 +2,7 @@
   const root = document.getElementById('rev18-analogos');
   let raw;
   try {
-    const response = await fetch('analogos.json');
+    const response = await fetch('analogos.json?v=2');
     if (!response.ok) throw new Error('Falha ao carregar os dados');
     raw = await response.json();
   } catch (error) {
@@ -13,16 +13,20 @@
   const cityById = new Map(cities.map(c => [c.id,c]));
   const events = raw.events.map(([id,date,r1,r6,r3,damage,tip]) => ({id,date,r1,r6,r3,damage,tip}));
   const labels = {1:'Muito baixa',2:'Baixa',3:'Média',4:'Alta',5:'Muito alta'};
+  const soviCategory = value => value < -1.5 ? 1 : value < -0.5 ? 2 : value < 0.5 ? 3 : value < 1.5 ? 4 : 5;
+  const legacySovi = {1:-2,2:-1,3:0,4:1,5:1.7};
   const el = id => root.querySelector('#' + id);
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('desastres-temporais-analogos') || '{}'); }
   catch (_) { saved = {}; }
   if (!saved || typeof saved !== 'object') saved = {};
+  const savedSovi = Number.isFinite(Number(saved.soviValue)) && saved.soviValue !== undefined
+    ? Number(saved.soviValue) : legacySovi[Number(saved.sovi)] ?? 0;
   let state = {
     mode: ['registro','presenca','magnitude'].includes(saved.mode) ? saved.mode : 'registro',
     axis: ['rain','sovi','icm'].includes(saved.axis) ? saved.axis : 'rain',
     rain: Number.isFinite(Number(saved.rain)) ? Number(saved.rain) : 60,
-    sovi: [1,2,3,4,5].includes(Number(saved.sovi)) ? Number(saved.sovi) : 3,
+    soviValue: Math.max(-3.5,Math.min(1.9,savedSovi)),
     icm: Number.isFinite(Number(saved.icm)) ? Math.min(20,Math.max(7,Number(saved.icm))) : 14
   };
   const fmt = (x,d=0) => Number(x).toLocaleString('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:d});
@@ -34,22 +38,28 @@
   };
   function saveState(){ try { localStorage.setItem('desastres-temporais-analogos', JSON.stringify(state)); } catch (_) {} }
   function getPool(){
-    const inCat=cities.filter(c=>c.cat===state.sovi);
-    const target=median(inCat.map(c=>c.sovi));
+    const cat=soviCategory(state.soviValue), inCat=cities.filter(c=>c.cat===cat);
     const ranked=[...cities].sort((a,b)=>{
-      const score=c=>Math.abs(c.cat-state.sovi)*3+Math.abs(c.icm-state.icm)/3+Math.abs(c.sovi-target)/1.5;
+      const score=c=>Math.abs(c.sovi-state.soviValue)+Math.abs(c.icm-state.icm)/3;
       return score(a)-score(b) || a.name.localeCompare(b.name,'pt-BR');
     });
     if(state.axis==='rain')return {pool:ranked.slice(0,8),chartPool:ranked.slice(0,8),exact:inCat.length};
     if(state.axis==='sovi'){
       const chartPool=cities.filter(c=>Math.abs(c.icm-state.icm)<=2);
-      return {pool:chartPool.filter(c=>c.cat===state.sovi).sort((a,b)=>Math.abs(a.icm-state.icm)-Math.abs(b.icm-state.icm)),chartPool,exact:inCat.length};
+      return {pool:chartPool.filter(c=>c.cat===cat).sort((a,b)=>Math.abs(a.sovi-state.soviValue)-Math.abs(b.sovi-state.soviValue)),chartPool,exact:inCat.length};
     }
-    const chartPool=inCat;
+    const chartPool=cities.filter(c=>Math.abs(c.sovi-state.soviValue)<=0.5);
     const band=icmBands.find(b=>state.icm>=b.lo&&state.icm<=b.hi);
     return {pool:chartPool.filter(c=>c.icm>=band.lo&&c.icm<=band.hi).sort((a,b)=>Math.abs(a.icm-state.icm)-Math.abs(b.icm-state.icm)),chartPool,exact:inCat.length};
   }
   const icmBands=[{lo:7,hi:9},{lo:10,hi:12},{lo:13,hi:15},{lo:16,hi:18},{lo:19,hi:20}];
+  const soviBins=[
+    {cat:1,label:'<−1,5',fullLabel:'SoVI < −1,5 (muito baixa)'},
+    {cat:2,label:'−1,0',fullLabel:'−1,5 ≤ SoVI < −0,5 (baixa)'},
+    {cat:3,label:'0',fullLabel:'−0,5 ≤ SoVI < 0,5 (média)'},
+    {cat:4,label:'1,0',fullLabel:'0,5 ≤ SoVI < 1,5 (alta)'},
+    {cat:5,label:'≥1,5',fullLabel:'SoVI ≥ 1,5 (muito alta)'}
+  ];
   function tolerance(){ return Math.max(10,Math.round(state.rain*.12/5)*5); }
   function selectedData(pool){
     const set=new Set(pool.map(c=>c.id));
@@ -86,10 +96,10 @@
         return {label,selected:state.rain>=lo&&state.rain<hi,...aggregateGroup(chartPool,lo,hi)};
       });
     }
-    if(state.axis==='sovi')return [1,2,3,4,5].map(cat=>({
-      label:width<500?({1:'M. baixa',2:'Baixa',3:'Média',4:'Alta',5:'M. alta'}[cat]):labels[cat],
-      selected:state.sovi===cat,
-      ...aggregateGroup(chartPool.filter(c=>c.cat===cat))
+    if(state.axis==='sovi')return soviBins.map(b=>({
+      label:b.label,fullLabel:b.fullLabel,
+      selected:soviCategory(state.soviValue)===b.cat,
+      ...aggregateGroup(chartPool.filter(c=>c.cat===b.cat))
     }));
     return icmBands.map(b=>({
       label:`${b.lo}–${b.hi}`,selected:state.icm>=b.lo&&state.icm<=b.hi,
@@ -103,7 +113,7 @@
     const height=270,left=67,right=15,top=36,bottom=64,pw=width-left-right,ph=height-top-bottom;
     const bins=chartGroups(pool,width), maxv=Math.max(1,...bins.map(b=>b.value||0))*1.15;
     svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.replaceChildren();
-    const axisTitle=state.axis==='rain'?`Precipitação acumulada (${conf.window}, mm)`:state.axis==='sovi'?'Faixa de vulnerabilidade (SoVI)':'ICM (faixas de pontuação)';
+    const axisTitle=state.axis==='rain'?`Precipitação acumulada (${conf.window}, mm)`:state.axis==='sovi'?'SoVI (valor numérico agrupado)':'ICM (faixas de pontuação)';
     svg.appendChild(node('title',{},`Resultado histórico por ${axisTitle}`));
     svg.appendChild(node('desc',{},`${conf.y}. As outras duas variáveis definem a comparação. A faixa selecionada recebe destaque.`));
     svg.appendChild(node('rect',{x:left,y:top,width:pw,height:ph,class:'chart-frame','data-chart-frame':''}));
@@ -119,7 +129,8 @@
       const x=left+i*slot+3,w=Math.max(4,slot-6),h=b.value===null?0:ph*b.value/maxv,y=top+ph-h;
       const cls='bar'+(b.selected?' selected':'')+(b.n<(state.mode==='magnitude'?5:20)?' sparse':'');
       const unit=state.axis==='rain'?' mm':'';
-      const rect=node('rect',{x,y,width:w,height:h,class:cls,'data-tooltip':`${b.label}${unit}: ${b.value===null?'sem observações':fmt(b.value,b.value<10?1:0)+'; n='+fmt(b.n)}`,'aria-label':`${b.label}${unit}; ${b.n} ${conf.n}`});
+      const label=b.fullLabel||b.label+unit;
+      const rect=node('rect',{x,y,width:w,height:h,class:cls,'data-tooltip':`${label}: ${b.value===null?'sem observações':fmt(b.value,b.value<10?1:0)+'; n='+fmt(b.n)}`,'aria-label':`${label}; ${b.n} ${conf.n}`});
       svg.appendChild(rect);
       svg.appendChild(node('text',{x:x+w/2,y:top+ph+17,'text-anchor':'middle',class:'axis-label'},b.label));
       if(width>=550||b.selected)svg.appendChild(node('text',{x:x+w/2,y:top+ph+34,'text-anchor':'middle',class:'axis-label'},`n=${fmt(b.n)}`));
@@ -135,12 +146,18 @@
     const rain=el('rev18-rain');rain.max=conf.max;rain.value=state.rain;
     el('rev18-rain-value').textContent=`${fmt(state.rain)} mm em ${conf.window}`;
     el('rev18-icm-value').textContent=fmt(state.icm);
-    el('rev18-sovi').value=String(state.sovi);el('rev18-icm').value=String(state.icm);el('rev18-axis').value=state.axis;
+    const soviCat=soviCategory(state.soviValue);
+    const soviControl=el('rev18-sovi'), soviLevel=el('rev18-sovi-level');
+    soviControl.value=String(state.soviValue);
+    soviControl.setAttribute('aria-valuetext',`${fmt(state.soviValue,1)}; vulnerabilidade ${labels[soviCat].toLowerCase()}`);
+    el('rev18-sovi-value').textContent=fmt(state.soviValue,1);
+    soviLevel.textContent=labels[soviCat];soviLevel.dataset.cat=String(soviCat);
+    el('rev18-icm').value=String(state.icm);el('rev18-axis').value=state.axis;
     root.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===state.mode)));
     const {pool,chartPool,exact}=getPool(), data=selectedData(pool), ids=new Set(data.near.map(e=>e.id));
     const nCities=state.mode==='registro'?pool.filter(c=>(raw.hist[c.id]||[]).some(([bin,n])=>n>0&&bin>=state.rain-data.tol&&bin<=state.rain+data.tol)).length:state.mode==='magnitude'?new Set(data.positive.map(e=>e.id)).size:ids.size;
     const low=data.n<(state.mode==='registro'?30:10);
-    const axisSupport=state.axis==='rain'?`${pool.length} perfis municipais mais próximos; ${exact} na faixa SoVI ${labels[state.sovi].toLowerCase()}. Barras: faixas de chuva; resumo: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`:state.axis==='sovi'?`Eixo SoVI: ${chartPool.length} municípios com ICM ${state.icm} ± 2; ${pool.length} na faixa escolhida. Chuva: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`:`Eixo ICM: ${chartPool.length} municípios com SoVI ${labels[state.sovi].toLowerCase()}; ${pool.length} na faixa ICM escolhida. Chuva: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`;
+    const axisSupport=state.axis==='rain'?`${pool.length} perfis municipais mais próximos de SoVI ${fmt(state.soviValue,1)} e ICM ${state.icm}; ${exact} municípios em toda a base na classe ${labels[soviCat].toLowerCase()}. Barras: faixas de chuva; resumo: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`:state.axis==='sovi'?`Eixo SoVI: ${chartPool.length} municípios com ICM ${state.icm} ± 2; ${pool.length} na classe ${labels[soviCat].toLowerCase()}. As barras agrupam intervalos numéricos do SoVI; dentro de cada intervalo a barra não muda. Chuva: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`:`Eixo ICM: ${chartPool.length} municípios com SoVI entre ${fmt(state.soviValue-0.5,1)} e ${fmt(state.soviValue+0.5,1)}; ${pool.length} na faixa ICM escolhida. Chuva: ${fmt(state.rain)} ± ${fmt(data.tol)} mm.`;
     el('rev18-support').textContent=axisSupport+(low?' Poucas observações nesta combinação.':'');
     const outcome=state.mode==='registro'?'Dias com registro':state.mode==='presenca'?'Protocolos com dano':'Magnitude do dano positivo';
     const predictor=state.axis==='rain'?'chuva':state.axis==='sovi'?'SoVI':'ICM';
@@ -184,7 +201,8 @@
   el('rev18-axis').addEventListener('change',e=>{state.axis=e.target.value;update();saveState();});
   el('rev18-rain').addEventListener('input',e=>{state.rain=Number(e.target.value);update();});
   el('rev18-rain').addEventListener('change',saveState);
-  el('rev18-sovi').addEventListener('change',e=>{state.sovi=Number(e.target.value);update();saveState();});
+  el('rev18-sovi').addEventListener('input',e=>{state.soviValue=Number(e.target.value);update();});
+  el('rev18-sovi').addEventListener('change',saveState);
   el('rev18-icm').addEventListener('input',e=>{state.icm=Number(e.target.value);update();});
   el('rev18-icm').addEventListener('change',saveState);
   new ResizeObserver(()=>chart(getPool().chartPool)).observe(el('rev18-chart'));
