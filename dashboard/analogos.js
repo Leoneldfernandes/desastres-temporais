@@ -2,7 +2,7 @@
   const root = document.getElementById('rev18-analogos');
   let raw;
   try {
-    const response = await fetch('analogos.json?v=2');
+    const response = await fetch('analogos.json?v=3');
     if (!response.ok) throw new Error('Falha ao carregar os dados');
     raw = await response.json();
   } catch (error) {
@@ -12,6 +12,8 @@
   const cities = raw.cities.map(([id,name,sovi,cat,icm]) => ({id,name,sovi,cat,icm}));
   const cityById = new Map(cities.map(c => [c.id,c]));
   const events = raw.events.map(([id,date,r1,r6,r3,damage,tip]) => ({id,date,r1,r6,r3,damage,tip}));
+  const eventsByCity = new Map(cities.map(c => [c.id,[]]));
+  events.forEach(event => eventsByCity.get(event.id).push(event));
   const labels = {1:'Muito baixa',2:'Baixa',3:'Média',4:'Alta',5:'Muito alta'};
   const soviCategory = value => value < -1.5 ? 1 : value < -0.5 ? 2 : value < 0.5 ? 3 : value < 1.5 ? 4 : 5;
   const legacySovi = {1:-2,2:-1,3:0,4:1,5:1.7};
@@ -36,6 +38,10 @@
     presenca: {window:'6 dias',max:400,field:'r6',edges:[0,30,60,90,120,160,220,300,400,Infinity],n:'protocolos',y:'Protocolos com dano (%)'},
     magnitude: {window:'3 dias',max:350,field:'r3',edges:[0,25,50,75,100,140,190,260,350,Infinity],n:'protocolos positivos',y:'Mediana dos danos humanos'}
   };
+  let selectedScatterCity = null;
+  let scatterPointer = null;
+  let moveScatterPointer = () => {};
+  let scatterCache = {key:null,points:[]};
   function saveState(){ try { localStorage.setItem('desastres-temporais-analogos', JSON.stringify(state)); } catch (_) {} }
   function getPool(){
     const cat=soviCategory(state.soviValue), inCat=cities.filter(c=>c.cat===cat);
@@ -140,6 +146,116 @@
       }
     });
   }
+  function scatterPoints(){
+    const key=`${state.mode}:${state.rain}`;
+    if(scatterCache.key===key)return scatterCache.points;
+    const conf=config[state.mode],tol=tolerance();
+    const points=cities.map(city=>{
+      if(state.mode==='registro'){
+        let n=0,k=0;
+        for(const [bin,days,records] of raw.hist[city.id]||[])
+          if(Math.abs(bin-state.rain)<=tol){n+=days;k+=records;}
+        return {...city,n,k,value:n?1000*k/n:null};
+      }
+      const near=(eventsByCity.get(city.id)||[]).filter(event=>Math.abs(event[conf.field]-state.rain)<=tol);
+      if(state.mode==='presenca'){
+        const k=near.filter(event=>event.damage>0).length;
+        return {...city,n:near.length,k,value:near.length?100*k/near.length:null};
+      }
+      const positive=near.filter(event=>event.damage>0).map(event=>event.damage);
+      return {...city,n:positive.length,k:positive.length,value:median(positive)};
+    });
+    scatterCache={key,points};
+    return points;
+  }
+  function scatterDetail(points,nearest,tol){
+    const chosen=points.find(point=>point.id===selectedScatterCity);
+    const unit=config[state.mode].y;
+    const minimum=state.mode==='registro'?30:10;
+    const supported=points.filter(point=>point.n>=minimum).length;
+    el('rev18-scatter-detail').textContent=chosen
+      ? `${chosen.name} · SoVI ${fmt(chosen.sovi,2)} · ICM ${chosen.icm} · ${chosen.value===null?'sem observações comparáveis':fmt(chosen.value,1)+' '+unit} · n=${fmt(chosen.n)}${chosen.n<minimum?' (poucas observações)':''}.`
+      : `Perfis próximos: ${nearest.map(point=>point.name).join(', ')}. Chuva ${fmt(state.rain)} ± ${fmt(tol)} mm; ${supported} de ${points.length} municípios com ao menos ${minimum} ${state.mode==='registro'?'dias':'protocolos'} comparáveis.`;
+  }
+  function startScatterDrag(event){
+    if(event.button!==undefined&&event.button!==0)return;
+    event.preventDefault();event.stopPropagation();
+    const svg=el('rev18-scatter');
+    scatterPointer=event.pointerId;
+    try{svg.setPointerCapture(event.pointerId);}catch(_){}
+    moveScatterPointer(event);
+  }
+  function renderScatter(){
+    const points=scatterPoints(),conf=config[state.mode],tol=tolerance();
+    const ranked=[...points].sort((a,b)=>{
+      const score=point=>Math.abs(point.sovi-state.soviValue)+Math.abs(point.icm-state.icm)/3;
+      return score(a)-score(b)||a.name.localeCompare(b.name,'pt-BR');
+    });
+    const nearest=ranked.slice(0,3),nearIds=new Set(nearest.map(point=>point.id));
+    const values=points.map(point=>point.value).filter(value=>value!==null).sort((a,b)=>a-b);
+    const ceiling=values.length?values[Math.floor(.9*(values.length-1))]||1:1;
+    const minimum=state.mode==='registro'?30:10;
+    el('rev18-scatter-weak').textContent=`Poucos dados (<${minimum} ${state.mode==='registro'?'dias':'protocolos'})`;
+    el('rev18-scatter-scale').textContent=`Cor: 0–${fmt(ceiling,1)} ${conf.y}; acima disso, intensidade máxima. Valores observados, não previsões.`;
+    const svg=el('rev18-scatter'),width=Math.max(320,Math.floor(svg.clientWidth||root.clientWidth||736));
+    const height=360,margin={left:67,right:16,top:18,bottom:56};
+    const plotW=width-margin.left-margin.right,plotH=height-margin.top-margin.bottom;
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    svg.setAttribute('aria-label',`${conf.y}; chuva de ${fmt(state.rain)} ± ${fmt(tol)} mm; ${points.length} municípios`);
+    svg.replaceChildren();
+    svg.appendChild(node('title',{},'Municípios por SoVI e ICM'));
+    svg.appendChild(node('desc',{},'A intensidade da cor representa o resultado observado. Círculos tracejados têm poucos dados.'));
+    const lowX=Math.min(...points.map(point=>point.sovi))-.15;
+    const highX=Math.max(...points.map(point=>point.sovi))+.15;
+    const x=value=>margin.left+8+(value-lowX)/(highX-lowX)*(plotW-16);
+    const y=value=>height-margin.bottom-8-(value-6)/15*(plotH-16);
+    moveScatterPointer=event=>{
+      const bounds=svg.getBoundingClientRect();
+      if(!bounds.width||!bounds.height)return;
+      const px=(event.clientX-bounds.left)*width/bounds.width;
+      const py=(event.clientY-bounds.top)*height/bounds.height;
+      const soviValue=Math.max(-3.5,Math.min(1.9,Math.round((lowX+(px-margin.left-8)/(plotW-16)*(highX-lowX))*10)/10));
+      const icm=Math.max(7,Math.min(20,Math.round(6+(height-margin.bottom-8-py)/(plotH-16)*15)));
+      if(soviValue===state.soviValue&&icm===state.icm)return;
+      state.soviValue=soviValue;state.icm=icm;selectedScatterCity=null;
+      update();
+    };
+    const frame=node('rect',{x:margin.left,y:margin.top,width:plotW,height:plotH,fill:'transparent',stroke:'var(--border)','data-chart-frame':'',class:'scatter-drag-target'});
+    frame.addEventListener('pointerdown',startScatterDrag);svg.appendChild(frame);
+    const xTicks=width<450?[-3,-1,1]:[-3,-2,-1,0,1,2];
+    for(const tick of xTicks){
+      const tx=x(tick);if(tx<margin.left||tx>width-margin.right)continue;
+      svg.appendChild(node('line',{x1:tx,y1:margin.top,x2:tx,y2:height-margin.bottom,stroke:'var(--border)',opacity:.55}));
+      svg.appendChild(node('text',{x:tx,y:height-margin.bottom+18,'text-anchor':'middle',class:'axis-label'},fmt(tick,1)));
+    }
+    for(const tick of [7,10,13,16,19]){
+      const ty=y(tick);
+      svg.appendChild(node('line',{x1:margin.left,y1:ty,x2:width-margin.right,y2:ty,stroke:'var(--border)',opacity:.55}));
+      svg.appendChild(node('text',{x:margin.left-8,y:ty+4,'text-anchor':'end',class:'axis-label'},fmt(tick)));
+    }
+    svg.appendChild(node('text',{x:margin.left+plotW/2,y:height-8,'text-anchor':'middle',class:'axis-title','data-axis':'x'},'SoVI (escore numérico)'));
+    svg.appendChild(node('text',{transform:`translate(16,${margin.top+plotH/2}) rotate(-90)`,'text-anchor':'middle',class:'axis-title','data-axis':'y'},'ICM (pontos)'));
+    for(const point of points){
+      const weak=point.n<minimum;
+      const label=`${point.name} · SoVI ${fmt(point.sovi,2)} · ICM ${point.icm} · ${point.value===null?'sem observações comparáveis':fmt(point.value,1)+' '+conf.y} · n=${fmt(point.n)}`;
+      const dot=node('circle',{
+        cx:x(point.sovi),cy:y(point.icm),r:nearIds.has(point.id)?6:4.5,
+        fill:point.value===null?'var(--muted-foreground)':'var(--viz-series-1)',
+        'fill-opacity':point.value===null ? .25 : Math.max(.25,Math.min(1,.2+.8*point.value/ceiling))*(weak ? .55 : 1),
+        stroke:nearIds.has(point.id)?'var(--viz-series-2)':weak?'var(--muted-foreground)':'none',
+        'stroke-width':nearIds.has(point.id)?2:1,'stroke-dasharray':weak?'2 2':'',
+        'aria-label':label,class:'scatter-city'
+      });
+      dot.appendChild(node('title',{},label));
+      dot.addEventListener('click',()=>{selectedScatterCity=point.id;scatterDetail(points,nearest,tol);});
+      svg.appendChild(dot);
+    }
+    svg.appendChild(node('circle',{cx:x(state.soviValue),cy:y(state.icm),r:10,fill:'var(--viz-series-2)',stroke:'var(--foreground)','stroke-width':1.5,'pointer-events':'none'}));
+    const handle=node('circle',{cx:x(state.soviValue),cy:y(state.icm),r:22,fill:'transparent',class:'scatter-drag-target','aria-label':`Perfil escolhido: SoVI ${fmt(state.soviValue,1)}, ICM ${state.icm}. Arraste para alterar.`});
+    handle.appendChild(node('title',{},'Arraste para mudar SoVI e ICM'));
+    handle.addEventListener('pointerdown',startScatterDrag);svg.appendChild(handle);
+    scatterDetail(points,nearest,tol);
+  }
   function cell(tr,text){const td=document.createElement('td');td.textContent=text;tr.appendChild(td);}
   function update(){
     const conf=config[state.mode];state.rain=Math.max(0,Math.min(conf.max,state.rain));
@@ -163,6 +279,7 @@
     const predictor=state.axis==='rain'?'chuva':state.axis==='sovi'?'SoVI':'ICM';
     el('rev18-chart-title').textContent=`${outcome} conforme ${predictor}`;
     chart(chartPool);
+    renderScatter();
     let aLabel,aValue,bLabel,bValue,cLabel,cValue;
     if(state.mode==='registro'){
       aLabel='Dias com registro / 1.000 dias';aValue=data.days?fmt(1000*data.recordDays/data.days,1):'—';
@@ -201,11 +318,28 @@
   el('rev18-axis').addEventListener('change',e=>{state.axis=e.target.value;update();saveState();});
   el('rev18-rain').addEventListener('input',e=>{state.rain=Number(e.target.value);update();});
   el('rev18-rain').addEventListener('change',saveState);
-  el('rev18-sovi').addEventListener('input',e=>{state.soviValue=Number(e.target.value);update();});
+  el('rev18-sovi').addEventListener('input',e=>{state.soviValue=Number(e.target.value);selectedScatterCity=null;update();});
   el('rev18-sovi').addEventListener('change',saveState);
-  el('rev18-icm').addEventListener('input',e=>{state.icm=Number(e.target.value);update();});
+  el('rev18-icm').addEventListener('input',e=>{state.icm=Number(e.target.value);selectedScatterCity=null;update();});
   el('rev18-icm').addEventListener('change',saveState);
+  const scatter=el('rev18-scatter');
+  scatter.addEventListener('pointermove',event=>{
+    if(scatterPointer===event.pointerId)moveScatterPointer(event);
+  });
+  const finishScatterDrag=event=>{
+    if(scatterPointer!==event.pointerId)return;
+    moveScatterPointer(event);scatterPointer=null;
+    try{scatter.releasePointerCapture(event.pointerId);}catch(_){}
+    saveState();
+  };
+  scatter.addEventListener('pointerup',finishScatterDrag);
+  scatter.addEventListener('pointercancel',finishScatterDrag);
   new ResizeObserver(()=>chart(getPool().chartPool)).observe(el('rev18-chart'));
+  let scatterWidth=0;
+  new ResizeObserver(()=>{
+    const width=Math.floor(scatter.clientWidth);
+    if(width&&width!==scatterWidth){scatterWidth=width;renderScatter();}
+  }).observe(scatter);
   update();
   const reportSize = () => {
     window.parent.postMessage({

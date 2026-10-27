@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Painel de testes | Desastres Temporais</title>
-  <link rel="stylesheet" href="analogos.css?v=2">
-  <script defer src="analogos.js?v=2"></script>
+  <link rel="stylesheet" href="analogos.css?v=3">
+  <script defer src="analogos.js?v=3"></script>
   <script>
     const syncTheme = () => {
       try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
@@ -57,6 +57,18 @@
     <div class="card viz-stat"><div id="rev18-stat-b-label" class="text-muted"></div><div id="rev18-stat-b" class="viz-stat-value tabular-nums"></div></div>
     <div class="card viz-stat"><div id="rev18-stat-c-label" class="text-muted"></div><div id="rev18-stat-c" class="viz-stat-value tabular-nums"></div></div>
   </div>
+  <h3>Municípios por SoVI e capacidade municipal</h3>
+  <p class="text-small text-muted">Arraste o ponto amarelo ou clique na área do gráfico para definir SoVI e ICM. Clique em outro ponto para consultar um município.</p>
+  <svg id="rev18-scatter" role="img" aria-label="Municípios no plano SoVI e ICM conforme o desfecho e a chuva selecionados"></svg>
+  <div class="scatter-legend text-small">
+    <span><i class="scatter-key low"></i>Menor resultado</span>
+    <span><i class="scatter-key high"></i>Maior resultado</span>
+    <span><i class="scatter-key near"></i>Perfil próximo</span>
+    <span><i class="scatter-key weak"></i><span id="rev18-scatter-weak">Poucos dados</span></span>
+    <span><i class="scatter-key chosen"></i>Perfil escolhido</span>
+  </div>
+  <p id="rev18-scatter-detail" class="text-small" role="status" aria-live="polite"></p>
+  <p id="rev18-scatter-scale" class="text-small text-muted"></p>
   <h3>Exemplos de municípios comparáveis</h3>
   <div class="table-responsive">
     <table class="table table-sm">

@@ -67,6 +67,17 @@ p { margin: 10px 0; line-height: 1.5; }
 .table th { font-weight: 500; }
 .table td:nth-child(3), .table td:nth-child(4), .table td:nth-child(5) { font-variant-numeric: tabular-nums; }
 #rev18-examples { margin-top: 10px; }
+.scatter-legend { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 6px 0; color: var(--muted-foreground); }
+.scatter-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.scatter-key { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--viz-series-1); }
+.scatter-key.low { opacity: .25; }
+.scatter-key.near { background: transparent; border: 2px solid var(--viz-series-2); }
+.scatter-key.weak { opacity: .25; border: 1px dashed var(--foreground); }
+.scatter-key.chosen { background: var(--viz-series-2); }
+#rev18-scatter-detail { min-height: 1.5em; }
+#rev18-scatter-scale { margin-top: 0; }
+#rev18-scatter .scatter-drag-target { touch-action: none; cursor: grab; }
+#rev18-scatter .scatter-drag-target:active { cursor: grabbing; }
 #rev18-analogos .chart-frame { fill: none; stroke: var(--border); stroke-width: 1; }
 #rev18-analogos .grid { stroke: var(--border); stroke-width: 1; }
 #rev18-analogos .bar { fill: var(--viz-series-1); }
