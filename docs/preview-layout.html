@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Revisão de layout — Desastres no Brasil</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 12px; background: #e4edf5; color: #183348; font: 14px system-ui, sans-serif; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    h1 { margin: 0; font-size: 16px; }
+    label { display: flex; align-items: center; gap: 8px; }
+    select { padding: 6px 10px; border: 1px solid #bacbd7; border-radius: 6px; background: white; }
+    #previewStage { position: relative; width: 100%; overflow: hidden; background: white; border: 1px solid #bacbd7; }
+    iframe { display: block; border: 0; transform-origin: top left; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Revisão de layout</h1>
+    <label for="previewSize">Área de visualização
+      <select id="previewSize">
+        <option value="1920,1080">1920 × 1080 — Full HD</option>
+        <option value="1366,768">1366 × 768</option>
+        <option value="1280,800">1280 × 800</option>
+        <option value="1280,720">1280 × 720</option>
+        <option value="1024,768">1024 × 768</option>
+        <option value="1366,620">1366 × 620</option>
+        <option value="1024,620">1024 × 620</option>
+        <option value="1536,864">1920 × 1080 com zoom de 125% — equivalente</option>
+        <option value="1280,720">1920 × 1080 com zoom de 150% — equivalente</option>
+        <option value="960,540">1920 × 1080 com zoom de 200% — equivalente</option>
+        <option value="412,860">412 × 860 — celular grande (área aproximada do navegador)</option>
+        <option value="860,412">860 × 412 — celular deitado</option>
+        <option value="768,1024">768 × 1024 — tablet em pé</option>
+        <option value="1024,768">1024 × 768 — tablet deitado</option>
+        <option value="820,1180">820 × 1180 — tablet maior em pé</option>
+        <option value="1180,820">1180 × 820 — tablet maior deitado</option>
+        <option value="320,568">320 × 568 — celular menor</option>
+        <option value="390,844">390 × 844 — celular</option>
+      </select>
+    </label>
+    <label for="previewLayout">Estilo
+      <select id="previewLayout">
+        <option value="">Automático</option>
+        <option value="intermediario">Intermediário</option>
+        <option value="compacto">Compacto</option>
+      </select>
+    </label>
+    <span id="previewInfo" aria-live="polite"></span>
+  </header>
+  <div id="previewStage">
+    <iframe id="layoutPreview" title="Site em 1920 × 1080" src="../?mes=1991-01&amp;serie=brasil&amp;grafico=fechado&amp;preview=0.73#mapa"></iframe>
+  </div>
+  <script>
+    const stage = document.getElementById('previewStage');
+    const frame = document.getElementById('layoutPreview');
+    const size = document.getElementById('previewSize');
+    const layout = document.getElementById('previewLayout');
+    const info = document.getElementById('previewInfo');
+    function fitPreview() {
+      const [width, height] = size.value.split(',').map(Number);
+      const scale = Math.min(1, (stage.clientWidth - 2) / width);
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      frame.style.transform = `scale(${scale})`;
+      stage.style.height = `${Math.ceil(height * scale) + 2}px`;
+      frame.title = `Site em ${width} × ${height}`;
+      info.textContent = `${width} × ${height} pixels de layout, zoom interno 100%; imagem ajustada a ${Math.round(scale * 100)}% para caber nesta prévia`;
+    }
+    size.addEventListener('change', fitPreview);
+    layout.addEventListener('change', () => {
+      const url = new URL(frame.src);
+      if (layout.value) url.searchParams.set('layout', layout.value);
+      else url.searchParams.delete('layout');
+      frame.src = url.href;
+    });
+    new ResizeObserver(fitPreview).observe(stage);
+    fitPreview();
+  </script>
+</body>
+</html>
+

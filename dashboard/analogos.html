@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Painel de testes | Desastres Temporais</title>
+  <link rel="stylesheet" href="analogos.css">
+  <script defer src="analogos.js"></script>
+  <script>
+    const syncTheme = () => {
+      try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
+      catch (_) { document.documentElement.dataset.theme = 'dark'; }
+    };
+    syncTheme();
+    try { new MutationObserver(syncTheme).observe(parent.document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); }
+    catch (_) {}
+  </script>
+</head>
+<body>
+<div id="rev18-analogos">
+  <h2>Município hipotético e situações semelhantes</h2>
+  <div class="viz-row" aria-label="Desfecho analisado">
+    <button type="button" class="btn" data-mode="registro" aria-pressed="true">Registros</button>
+    <button type="button" class="btn" data-mode="presenca" aria-pressed="false">Presença de dano</button>
+    <button type="button" class="btn" data-mode="magnitude" aria-pressed="false">Magnitude do dano</button>
+  </div>
+
+  <label class="form-label" for="rev18-axis">Eixo horizontal</label>
+  <select class="form-select" id="rev18-axis">
+    <option value="rain">Precipitação</option>
+    <option value="sovi">Vulnerabilidade (SoVI)</option>
+    <option value="icm">Capacidade municipal (ICM)</option>
+  </select>
+
+  <div class="viz-controls">
+    <div class="control">
+      <label class="form-label" for="rev18-rain">Precipitação: <strong id="rev18-rain-value" class="tabular-nums"></strong></label>
+      <input class="form-range" id="rev18-rain" type="range" min="0" max="200" step="10" value="60">
+    </div>
+    <div class="control">
+      <label class="form-label" for="rev18-sovi">Faixa do SoVI</label>
+      <select class="form-select" id="rev18-sovi">
+        <option value="1">Muito baixa</option>
+        <option value="2">Baixa</option>
+        <option value="3" selected>Média</option>
+        <option value="4">Alta</option>
+        <option value="5">Muito alta</option>
+      </select>
+    </div>
+    <div class="control">
+      <label class="form-label" for="rev18-icm">ICM: <strong id="rev18-icm-value" class="tabular-nums"></strong></label>
+      <input class="form-range" id="rev18-icm" type="range" min="7" max="20" step="1" value="14">
+    </div>
+  </div>
+
+  <p id="rev18-support" class="text-small" role="status" aria-live="polite"></p>
+  <h3 id="rev18-chart-title"></h3>
+  <svg id="rev18-chart" role="img" aria-label="Resultado observado por faixa de precipitação nos municípios de perfil semelhante"></svg>
+  <div class="viz-grid" id="rev18-stats">
+    <div class="card viz-stat"><div id="rev18-stat-a-label" class="text-muted"></div><div id="rev18-stat-a" class="viz-stat-value tabular-nums"></div></div>
+    <div class="card viz-stat"><div id="rev18-stat-b-label" class="text-muted"></div><div id="rev18-stat-b" class="viz-stat-value tabular-nums"></div></div>
+    <div class="card viz-stat"><div id="rev18-stat-c-label" class="text-muted"></div><div id="rev18-stat-c" class="viz-stat-value tabular-nums"></div></div>
+  </div>
+  <h3>Exemplos de municípios comparáveis</h3>
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th>Município</th><th>SoVI</th><th>ICM</th><th id="rev18-city-count-head">Observações</th><th>Danos humanos</th></tr></thead>
+      <tbody id="rev18-city-rows"></tbody>
+    </table>
+  </div>
+  <div id="rev18-examples" class="text-small"></div>
+  <p class="text-small text-muted">Fonte: base analítica do Artigo 03, revisão 18, Santa Catarina, 2017–2025. Os números são frequências históricas de perfis próximos; o teste não prevê o resultado do município fictício.</p>
+</div>
+</body>
+</html>

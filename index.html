@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <meta
+      name="description"
+      content="Ambiente de testes Desastres Temporais: cópia experimental do mapa de desastres e painel interativo de chuva, vulnerabilidade e capacidade municipal."
+    >
+    <title>Desastres Temporais | Ambiente de testes</title>
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <script src="assets/js/theme.js?v=ba9b626daf28"></script>
+    <link rel="stylesheet" href="assets/vendor/leaflet.css">
+    <link rel="stylesheet" href="assets/css/app.css?v=aac9bbb09a7d">
+    <script defer src="assets/vendor/leaflet.js"></script>
+    <script defer src="assets/js/export.js?v=d16158b5fa13" data-export-worker="assets/js/export-worker.js?v=8e0c5b81069c"></script>
+    <script defer src="assets/js/mobile-ui.js?v=4e3fae25a4f6"></script>
+    <script defer src="assets/js/playback-view.js?v=505d3431a8c2"></script>
+    <script defer src="assets/js/layout-shortcuts.js?v=77a18e628f5c"></script>
+    <script defer src="assets/js/app.js?v=4abae545a645"></script>
+    <script defer src="assets/js/navigation.js?v=7768ed604c0b"></script>
+    <script defer src="assets/js/dashboard-embed.js?v=1b136b368906"></script>
+    <script defer src="assets/js/visitor-config.js?v=ce2fa60f70af"></script>
+    <script defer src="assets/js/welcome.js?v=ea12c0721ee8"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#map">Ir para o mapa</a>
+
+    <header class="app-header folder-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow" id="brandCoverage">Atlas brasileiro</p>
+          <h1>Desastres Temporais</h1>
+          <p class="brand-subtitle">Ambiente de testes · mapa e análises experimentais</p>
+          <p class="author-credit">
+            Por:
+            <a href="http://lattes.cnpq.br/4668011474465628" target="_blank" rel="noopener">
+              Leonel Delmiro Fernandes
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <button class="mobile-options-button" id="mobileOptionsButton" type="button" aria-expanded="false" aria-controls="mobileOptionsPanel">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Opções</span>
+      </button>
+      <section class="mobile-options-panel" id="mobileOptionsPanel" hidden aria-labelledby="mobileOptionsTitle">
+        <header><h2 id="mobileOptionsTitle">Opções</h2><button id="closeMobileOptions" type="button" aria-label="Fechar opções">×</button></header>
+        <div id="mobileAppearanceSlot"></div>
+        <section aria-labelledby="mobileUpdatesTitle"><h3 id="mobileUpdatesTitle">Atualizações</h3><div id="mobileUpdatesSlot"></div></section>
+        <button class="button" id="mobilePrivacyButton" type="button" aria-haspopup="dialog">Privacidade e estatísticas de acesso</button>
+      </section>
+
+    <nav class="site-navigation" aria-label="Seções do site">
+      <div class="site-tabs" id="siteNavigation" role="tablist" aria-label="Mapa, Dashboard e Sobre">
+        <button id="tab-mapa" type="button" role="tab" aria-selected="true" aria-controls="section-mapa"><svg class="folder-tab-shape" viewBox="0 0 140 48" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M .5 48 L 10 6 Q 11.2 .5 16 .5 H 124 Q 128.8 .5 130 6 L 139.5 48" /></svg><span>Mapa</span></button>
+        <button id="tab-dashboard" type="button" role="tab" aria-selected="false" aria-controls="section-dashboard" tabindex="-1"><svg class="folder-tab-shape" viewBox="0 0 140 48" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M .5 48 L 10 6 Q 11.2 .5 16 .5 H 124 Q 128.8 .5 130 6 L 139.5 48" /></svg><span>Dashboard</span></button>
+        <button id="tab-sobre" type="button" role="tab" aria-selected="false" aria-controls="section-sobre" tabindex="-1"><svg class="folder-tab-shape" viewBox="0 0 140 48" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M .5 48 L 10 6 Q 11.2 .5 16 .5 H 124 Q 128.8 .5 130 6 L 139.5 48" /></svg><span>Sobre</span></button>
+      </div>
+    </nav>
+
+      <div class="header-actions">
+        <label class="field field-uf" for="ufSelector">
+          <span>Recorte territorial</span>
+          <select id="ufSelector" disabled>
+            <option value="BR">Brasil inteiro</option>
+          </select>
+        </label>
+        <label class="field field-theme" for="themeSelector" hidden>
+          <span>Aparência</span>
+          <select id="themeSelector" title="Sistema acompanha a aparência do seu computador">
+            <option value="system">Sistema</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </label>
+        <div class="update-status-wrap">
+          <button
+            class="status-badge is-loading"
+            id="dataStatus"
+            type="button"
+            aria-expanded="false"
+            aria-controls="updateStatusPanel"
+            disabled
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="dataStatusText" role="status" aria-live="polite">Preparando o mapa…</span>
+            <span class="status-chevron" aria-hidden="true">⌄</span>
+          </button>
+
+          <section
+            class="update-status-panel is-hidden"
+            id="updateStatusPanel"
+            role="region"
+            aria-labelledby="updateStatusTitle"
+          >
+            <header class="update-status-header">
+              <div>
+                <p class="eyebrow">Transparência dos dados</p>
+                <h2 id="updateStatusTitle">Atualização do Atlas</h2>
+              </div>
+              <button
+                class="update-status-close"
+                id="closeUpdateStatus"
+                type="button"
+                aria-label="Fechar informações de atualização"
+              >×</button>
+            </header>
+
+            <div class="update-status-summary">
+              <span class="update-state-chip" id="updatePanelState">Aguardando verificação</span>
+              <p id="updateStatusMessage">
+                Preparando as informações sobre a base publicada.
+              </p>
+            </div>
+
+            <dl class="update-status-details">
+              <div>
+                <dt>Base em uso</dt>
+                <dd id="publishedVersion">—</dd>
+              </div>
+              <div>
+                <dt>Período coberto</dt>
+                <dd id="publishedCoverage">—</dd>
+              </div>
+              <div>
+                <dt>Geração da base de dados</dt>
+                <dd id="publishedGeneratedAt">—</dd>
+              </div>
+              <div>
+                <dt>Última verificação do Atlas</dt>
+                <dd id="lastAtlasCheck">Ainda não realizada</dd>
+              </div>
+              <div class="is-hidden" id="latestAtlasRow">
+                <dt>Versão encontrada</dt>
+                <dd id="latestAtlasVersion">—</dd>
+              </div>
+            </dl>
+
+            <a id="updateSourceLink" href="https://atlasdigital.mdr.gov.br/" target="_blank" rel="noopener">
+              https://atlasdigital.mdr.gov.br/
+            </a>
+            <section class="site-release-info" aria-labelledby="siteReleaseTitle">
+              <h3 id="siteReleaseTitle">Atualização do site</h3>
+              <dl class="update-status-details">
+                <div>
+                  <dt>Versão do site</dt>
+                  <dd>v0.73-teste.1 · Ambiente de testes</dd>
+                </div>
+                <div>
+                  <dt>Data de implementação</dt>
+                  <dd><time datetime="2026-08-20">20/08/2026</time></dd>
+                </div>
+                <div>
+                  <dt>Última atualização do site</dt>
+                  <dd><time datetime="2026-10-26">26/10/2026</time></dd>
+                </div>
+              </dl>
+            </section>
+          </section>
+        </div>
+      </div>
+    </header>
+
+
+
+    <main class="site-content">
+    <section class="app-shell" id="section-mapa" role="tabpanel" aria-labelledby="tab-mapa">
+      <aside class="sidebar sidebar-left" id="filtersSidebar" aria-label="Filtros e indicadores">
+        <div class="drawer-heading"><strong>Filtros e indicadores</strong><button type="button" class="drawer-close" data-close-map-panel aria-label="Fechar filtros e indicadores">×</button></div>
+        <section class="panel summary-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Síntese mensal</p>
+              <h2 id="kpiPeriod">—</h2>
+            </div>
+            <span class="scope-pill" id="scopePill">Brasil</span>
+          </div>
+
+          <div class="kpi-grid">
+            <article class="kpi kpi-primary">
+              <span class="kpi-label">Eventos</span>
+              <strong id="kpiEvents">0</strong>
+            </article>
+            <article class="kpi">
+              <span class="kpi-label">Municípios</span>
+              <strong id="kpiMunicipalities">0</strong>
+            </article>
+            <article class="kpi">
+              <span class="kpi-label">Danos humanos</span>
+              <strong id="kpiHuman">0</strong>
+            </article>
+            <article class="kpi">
+              <span class="kpi-label">Mortes</span>
+              <strong id="kpiDeaths">0</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel type-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Camadas temáticas</p>
+              <h2>16 tipologias oficiais</h2>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" id="selectAllTypes">Marcar todas</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" id="clearAllTypes">Limpar</button>
+          </div>
+          <div class="type-list" id="typeList" aria-label="Tipologias de desastre"></div>
+          <p class="legend-note">
+            A cor mostra a tipologia com mais danos humanos. Borda dourada indica mais de uma
+            tipologia no município.
+          </p>
+        </section>
+
+        <section class="panel export-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Resultados reutilizáveis</p>
+              <h2>Baixar dados</h2>
+            </div>
+          </div>
+          <p class="export-intro">
+            Exporte o recorte territorial e as tipologias selecionadas no mapa.
+          </p>
+          <button class="button export-open-button" type="button" id="openExport">
+            Baixar dados filtrados
+          </button>
+          <button class="about-button" id="openWelcome" type="button" aria-haspopup="dialog" hidden>
+            <svg class="about-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M10 9v5M10 6v.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <span>Sobre e privacidade</span>
+          </button>
+        </section>
+      </aside>
+
+      <section class="map-stage" id="mapStage" aria-label="Mapa do Brasil">
+        <div id="map" tabindex="0" aria-label="Mapa interativo dos municípios brasileiros"></div>
+
+        <div class="map-panel-toggles" role="group" aria-label="Painéis do mapa">
+          <button type="button" id="toggleFiltersPanel" aria-controls="filtersSidebar" aria-expanded="false" data-tooltip="Abrir filtros e indicadores" aria-label="Filtros e indicadores"><span class="panel-label-full">Filtros e indicadores</span><span class="panel-label-short">Filtros</span></button>
+          <button type="button" id="toggleResultsPanel" aria-controls="resultsSidebar" aria-expanded="false" data-tooltip="Abrir resultados e impactos" aria-label="Resultados e impactos"><span class="panel-label-full">Resultados e impactos</span><span class="panel-label-short">Resultados</span></button>
+          <button type="button" id="toggleMapLegend" aria-controls="mapLegendPanel" aria-expanded="false" aria-label="Legenda do mapa" data-tooltip="Legenda do mapa">Legenda</button>
+        </div>
+
+        <section class="map-legend-panel" id="mapLegendPanel" hidden aria-labelledby="mapLegendTitle">
+          <header><h2 id="mapLegendTitle">Legenda do mapa</h2><button type="button" id="closeMapLegend" aria-label="Fechar legenda do mapa">×</button></header>
+          <p>A cor representa a tipologia com mais danos humanos no município, no mês e nos filtros selecionados.</p>
+          <ul id="mapLegendTypes" class="map-legend-types"></ul>
+          <ul class="map-legend-symbols">
+            <li><span class="legend-multiple" aria-hidden="true"></span><span>Borda dourada: múltiplas tipologias no município.</span></li>
+            <li><span class="legend-empty" aria-hidden="true"></span><span>Sem preenchimento: sem evento no mês e nos filtros selecionados.</span></li>
+          </ul>
+        </section>
+
+        <div class="map-tools" role="group" aria-label="Controles de visualização do mapa">
+          <div class="municipality-locator" id="municipalityLocator">
+            <button
+              class="municipality-search-toggle"
+              id="municipalitySearchToggle"
+              type="button"
+              aria-label="Buscar município"
+              data-tooltip="Buscar município"
+              aria-expanded="false"
+              aria-controls="municipalitySearchPanel"
+            >
+              <span class="municipality-search-icon" aria-hidden="true"></span>
+            </button>
+            <section class="municipality-search-panel" id="municipalitySearchPanel" hidden>
+              <div class="municipality-search-field">
+                <span class="municipality-search-icon" aria-hidden="true"></span>
+                <input
+                  id="municipalitySearchInput"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Localizar município"
+                  aria-label="Localizar município"
+                  aria-controls="municipalitySearchResults"
+                  aria-describedby="municipalitySearchStatus"
+                >
+                <button
+                  class="municipality-search-clear"
+                  id="municipalitySearchClear"
+                  type="button"
+                  aria-label="Limpar município localizado"
+                >×</button>
+              </div>
+              <p class="municipality-search-status" id="municipalitySearchStatus" aria-live="polite">
+                Digite ao menos duas letras.
+              </p>
+              <ul class="municipality-search-results" id="municipalitySearchResults"></ul>
+            </section>
+          </div>
+          <button
+            class="map-tool-button"
+            id="resetMapView"
+            type="button"
+            aria-label="Retornar ao panorama do recorte"
+            data-tooltip="Retornar ao panorama do recorte"
+          >
+            <span class="home-view-icon" aria-hidden="true">⌂</span>
+          </button>
+          <button
+            class="map-tool-button"
+            id="toggleFullscreen"
+            type="button"
+            aria-label="Visualizar mapa em tela cheia"
+            aria-pressed="false"
+            data-tooltip="Visualizar mapa em tela cheia"
+          >
+            <span class="fullscreen-icon" aria-hidden="true"></span>
+          </button>
+          <button
+            class="map-tool-button share-view-button"
+            type="button"
+            id="shareView"
+            aria-label="Compartilhar visualização"
+            data-tooltip="Compartilhar visualização"
+          >
+            <svg class="share-view-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false">
+              <path d="m8.7 10.5 6.6-4m-6.6 7 6.6 4" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="18" cy="19" r="3" />
+            </svg>
+            <span id="shareViewLabel" role="status" aria-live="polite">Compartilhar visualização</span>
+          </button>
+        </div>
+
+        <div class="north-indicator" role="img" aria-label="Norte">
+          <span class="north-arrow" aria-hidden="true"></span>
+          <strong aria-hidden="true">N</strong>
+        </div>
+
+        <div class="map-key" aria-hidden="true">
+          <span><i class="key-swatch key-active"></i> ocorrência</span>
+          <span><i class="key-swatch key-multiple"></i> múltiplas tipologias</span>
+          <span><i class="key-swatch key-empty"></i> sem evento</span>
+        </div>
+
+        <section id="fullscreenInvitation" class="fullscreen-invitation" aria-labelledby="fullscreenInvitationTitle" hidden>
+          <strong id="fullscreenInvitationTitle">Mais espaço para acompanhar?</strong>
+          <div><button class="button" type="button" id="acceptFullscreenInvitation">Tela cheia</button><button class="button secondary" type="button" id="dismissFullscreenInvitation">Agora não</button></div>
+        </section>
+        <button id="exitMobileFullscreen" class="mobile-fullscreen-exit" type="button" data-tooltip="Sair da tela cheia" hidden>Sair</button>
+        <div id="playbackDock" class="playback-dock" role="group" aria-label="Reprodução em tela cheia" hidden>
+          <span id="dockMonth" aria-label="Mês em exibição"></span>
+          <button id="dockPause" type="button" data-tooltip="Pausar linha temporal">❚❚ Pausar</button>
+          <button id="dockControls" type="button" data-tooltip="Mostrar controles de reprodução" aria-controls="timelinePanel">☷ Controles</button>
+        </div>
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="loading-card">
+            <span class="loader" aria-hidden="true"></span>
+            <strong id="loadingTitle">Carregando o Brasil</strong>
+            <p id="loadingMessage">Baixando a malha municipal e o resumo histórico…</p>
+            <button class="button secondary is-hidden" type="button" id="retryButton">
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+
+        <section class="timeline" id="timelinePanel" aria-label="Linha temporal">
+          <div class="temporal-analysis" id="temporalAnalysis" hidden>
+            <div class="temporal-analysis-header">
+              <div class="temporal-analysis-heading">
+                <div>
+                  <strong>Evolução temporal</strong>
+                  <span id="temporalContextLabel">Brasil · 16 tipologias</span>
+                </div>
+              </div>
+              <div class="temporal-control-group temporal-context-options" role="group" aria-label="Nível da análise temporal">
+                <button
+                  class="temporal-option is-active"
+                  id="temporalBrazil"
+                  type="button"
+                  data-temporal-context="brazil"
+                  aria-pressed="true"
+                >Brasil</button>
+                <button
+                  class="temporal-option"
+                  id="temporalState"
+                  type="button"
+                  data-temporal-context="state"
+                  aria-pressed="false"
+                >Selecionar estado</button>
+                <button
+                  class="temporal-option"
+                  id="temporalMunicipality"
+                  type="button"
+                  data-temporal-context="municipality"
+                  aria-pressed="false"
+                >Selecionar município</button>
+              </div>
+              <div class="temporal-chart-tooltip" id="temporalChartTooltip" aria-hidden="true"></div>
+              <div class="temporal-control-group temporal-metric-options" role="group" aria-label="Indicador temporal">
+                <button
+                  class="temporal-option is-active"
+                  type="button"
+                  data-temporal-metric="events"
+                  aria-pressed="true"
+                >Ocorrências</button>
+                <button
+                  class="temporal-option"
+                  type="button"
+                  data-temporal-metric="human"
+                  aria-pressed="false"
+                >Danos humanos</button>
+                <button
+                  class="temporal-option"
+                  type="button"
+                  data-temporal-metric="loss"
+                  aria-pressed="false"
+                >Prejuízos econômicos</button>
+              </div>
+            </div>
+
+            <div class="temporal-chart-wrap">
+              <svg
+                id="temporalChart"
+                role="slider"
+                tabindex="0"
+                aria-label="Selecionar mês no gráfico temporal"
+                aria-valuemin="0"
+                aria-valuemax="419"
+                aria-valuenow="0"
+                aria-valuetext="Janeiro de 1991"
+              ></svg>
+            </div>
+            <p class="temporal-chart-status" id="temporalChartStatus" aria-live="polite"></p>
+          </div>
+
+          <div class="timeline-topline">
+            <div class="player-controls">
+              <button class="icon-button" type="button" id="previousPeriod" aria-label="Mês anterior">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="button play-button" type="button" id="playButton" aria-label="Reproduzir linha temporal">
+                <span id="playIcon" aria-hidden="true">▶</span>
+                <span id="playLabel">Reproduzir</span>
+              </button>
+              <button class="icon-button" type="button" id="nextPeriod" aria-label="Próximo mês">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="period-share">
+              <div class="period-display">
+                <p class="eyebrow">Mês em exibição</p>
+                <strong class="current-period" id="displayPeriod">—</strong>
+              </div>
+            </div>
+            <div class="playback-settings">
+              <label class="field speed-field" for="speedSelect">
+                <span>Velocidade</span>
+                <select id="speedSelect">
+                  <option value="2000">1 mês / 2 s</option>
+                  <option value="1000" selected>1 mês / s</option>
+                  <option value="500">2 meses / s</option>
+                  <option value="333">3 meses / s</option>
+                </select>
+              </label>
+              <button
+                class="temporal-analysis-toggle"
+                id="toggleTemporalAnalysis"
+                type="button"
+                aria-expanded="false"
+                aria-controls="temporalAnalysis"
+               aria-label="Abrir série temporal"><span class="temporal-toggle-label">Abrir série temporal</span><span class="temporal-toggle-short" aria-hidden="true">Série</span></button>
+            </div>
+          </div>
+          <div class="range-row">
+            <span id="minPeriod">01/1991</span>
+            <input type="range" id="periodSlider" min="0" max="419" value="0" aria-label="Selecionar mês">
+            <span id="maxPeriod">12/2025</span>
+          </div>
+          <p class="playback-message" id="playbackMessage" aria-live="polite"></p>
+        </section>
+      </section>
+
+      <aside class="sidebar sidebar-right" id="resultsSidebar" aria-label="Resultados do mês">
+        <div class="drawer-heading"><strong>Resultados e impactos</strong><button type="button" class="drawer-close" data-close-map-panel aria-label="Fechar resultados e impactos">×</button></div>
+        <section class="panel results-panel">
+          <div class="section-heading compact results-heading">
+            <div>
+              <p class="eyebrow">Ocorrências visíveis</p>
+              <h2 id="resultsPeriod">—</h2>
+            </div>
+            <span class="result-count" id="resultCount">0 resultados</span>
+          </div>
+          <div class="virtual-table" id="resultsViewport" role="table" aria-label="Ocorrências do mês">
+            <div class="virtual-head" role="row">
+              <span role="columnheader">Município</span>
+              <span role="columnheader">Tipologia</span>
+              <span role="columnheader">Eventos</span>
+              <span role="columnheader">Danos</span>
+            </div>
+            <div class="virtual-canvas" id="resultsCanvas" role="rowgroup"></div>
+          </div>
+          <p class="empty-results is-hidden" id="emptyResults">Nenhuma ocorrência para os filtros deste mês.</p>
+        </section>
+
+        <section class="panel damage-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Impactos do mês</p>
+              <h2>Danos declarados</h2>
+            </div>
+          </div>
+          <dl class="damage-list">
+            <div><dt>Feridos e enfermos</dt><dd id="damageInjured">0</dd></div>
+            <div><dt>Desabrigados</dt><dd id="damageHomeless">0</dd></div>
+            <div><dt>Desalojados</dt><dd id="damageDisplaced">0</dd></div>
+            <div><dt>Demais afetados</dt><dd id="damageAffected">0</dd></div>
+            <div><dt>Prejuízo público</dt><dd id="damagePublic">R$ 0</dd></div>
+            <div><dt>Prejuízo privado</dt><dd id="damagePrivate">R$ 0</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </section>
+
+    <section class="site-page" id="section-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="0" hidden>
+      <div class="site-page-inner dashboard-experiment">
+        <p class="eyebrow">Laboratório de visualização · Santa Catarina</p>
+        <h2>Chuva, vulnerabilidade e capacidade municipal</h2>
+        <p>Escolha o desfecho e a variável do eixo horizontal. Ajuste as outras duas para comparar situações históricas semelhantes no período de 2017 a 2025.</p>
+        <p class="site-page-note">Este painel mostra frequências observadas da pesquisa, sem estimar risco individual ou efeitos causais. Combinações com poucos dados exigem cautela.</p>
+        <iframe id="analogosFrame" class="dashboard-analogos-frame" src="dashboard/analogos.html" title="Painel interativo de registros e danos humanos" loading="lazy"></iframe>
+        <p class="site-page-note dashboard-sources">Fontes: registros do <a href="https://atlasdigital.mdr.gov.br/" target="_blank" rel="noopener">Atlas Digital/MIDR</a>; precipitação EPAGRI-CIRAM, complementada por INMET; SoVI de <a href="https://repositorio.ufsc.br/handle/123456789/264180" target="_blank" rel="noopener">Júlia Boelter Nickel</a>; <a href="https://www.gov.br/mdr/pt-br/assuntos/protecao-e-defesa-civil/icm" target="_blank" rel="noopener">ICM/MIDR</a>. Tratamentos e limitações: Artigo 03, revisão 18.</p>
+      </div>
+    </section>
+
+    <section class="site-page" id="section-sobre" role="tabpanel" aria-labelledby="tab-sobre" tabindex="0" hidden>
+      <div class="site-page-inner">
+        <header class="about-heading">
+          <h2>Sobre o projeto &quot;Desastres Temporais&quot;</h2>
+          <p class="about-subtitle"><em>Mapa interativo de ocorrências e impactos ao longo do tempo</em></p>
+        </header>
+        <p class="site-page-lead">Idealizado e desenvolvido para apoiar a pesquisa, o ensino e a consulta pública sobre desastres no Brasil. A proposta é tornar os dados mais acessíveis e facilitar a compreensão das ocorrências e de seus impactos nos municípios brasileiros.</p>
+        <div class="about-grid">
+          <article class="panel about-card about-authorship">
+            <h3>Autoria</h3>
+            <div class="about-author">
+              <p class="about-author-role">Autor</p>
+              <p><strong>Leonel Delmiro Fernandes</strong> é Engenheiro Civil (UVA) e mestrando em Desastres Naturais pela Universidade Federal de Santa Catarina (UFSC). Desenvolve pesquisas sobre riscos climáticos, vulnerabilidade socioambiental e impactos dos desastres, utilizando análise de dados e mapas para compreender suas relações com o território.</p>
+              <a href="http://lattes.cnpq.br/4668011474465628" target="_blank" rel="noopener">Conheça o currículo Lattes</a>
+            </div>
+            <div class="about-author">
+              <p class="about-author-role">Coautor e orientador</p>
+              <p><strong>Lindberg Nascimento Júnior</strong> é Geógrafo pela UEL (licenciatura e bacharelado), graças à política de cotas. É mestre e doutor em Geografia pela UNESP, com estágios de pesquisa na França e em Moçambique.</p>
+              <p>Professor do Departamento de Geociências da UFSC, atua no curso de Geografia e nos programas de pós-graduação em Geografia e em Desastres Naturais. Coordena o Laboratório de Climatologia Aplicada (LabClima/UFSC) e desenvolve pesquisas em Climatologia Geográfica, Geografia do Clima e Geografia Física Crítica, com foco em variabilidade climática, clima urbano, risco climático e racismo ambiental.</p>
+              <a href="http://lattes.cnpq.br/0232412865816844" target="_blank" rel="noopener">Conheça o currículo Lattes</a>
+            </div>
+            <p class="about-affiliation">Vínculo acadêmico: LabClima/UFSC. <a href="http://www.labclima.ufsc.br/" target="_blank" rel="noopener">Acesse o laboratório</a></p>
+          </article>
+          <article class="panel about-card">
+            <h3>Fonte dos dados</h3>
+            <p>Atlas Digital de Desastres no Brasil, do MIDR, com participação da UFSC/CEPED. As ocorrências, os danos humanos e os prejuízos econômicos apresentados vêm dos registros dessa base.</p>
+            <a href="https://atlasdigital.mdr.gov.br/" target="_blank" rel="noopener">Acesse o Atlas Digital</a>
+          </article>
+          <article class="panel about-card">
+            <h3>Como interpretar</h3>
+            <p>O mês corresponde à data do evento registrada na fonte. <a class="layout-letter" data-layout-shortcut="amplo" href="#mapa" aria-label="Abrir visual amplo">A</a>usência de registro não significa ausência de desastre. Os valores refletem os danos declarados e podem apresentar <a class="layout-letter" data-layout-shortcut="intermediario" href="?layout=intermediario#mapa" aria-label="Abrir visual intermediário">l</a>imitações ou receber <a class="layout-letter" data-layout-shortcut="compacto" href="?layout=compacto#mapa" aria-label="Abrir visual compacto">c</a>orreções.</p>
+            <a href="https://github.com/Leoneldfernandes/desastres-no-brasil/blob/main/docs/metodologia.md" target="_blank" rel="noopener">Leia a metodologia</a>
+          </article>
+          <article class="panel about-card">
+            <h3>Atualização e privacidade</h3>
+            <p>Esta cópia é um ambiente de testes separado do site Desastres no Brasil. A medição de acessos por Google Analytics está desativada aqui.</p>
+            <button class="button secondary" id="aboutPrivacy" type="button">Preferências de privacidade</button>
+          </article>
+        </div>
+        <button class="button secondary" type="button" data-open-map>Voltar ao mapa</button>
+      </div>
+    </section>
+    </main>
+
+    <div class="modal-backdrop is-hidden" id="exportModal" role="presentation">
+      <section class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Exportação científica</p>
+            <h2 id="exportTitle">Baixar dados filtrados</h2>
+          </div>
+          <button class="icon-button close-button" type="button" id="closeExport" aria-label="Fechar exportação">×</button>
+        </header>
+        <div class="export-modal-content">
+          <dl class="export-context">
+            <div><dt>Recorte territorial</dt><dd id="exportTerritory">—</dd></div>
+            <div><dt>Tipologias</dt><dd id="exportTypes">—</dd></div>
+            <div><dt>Linhas estimadas</dt><dd id="exportRowCount">—</dd></div>
+          </dl>
+
+          <fieldset class="export-options">
+            <legend>Período exportado</legend>
+            <label>
+              <input type="radio" name="exportPeriod" value="current" checked>
+              <span><strong>Mês em exibição</strong><small id="exportCurrentPeriod">—</small></span>
+            </label>
+            <label>
+              <input type="radio" name="exportPeriod" value="history">
+              <span><strong>Série histórica completa</strong><small id="exportHistoryPeriod">—</small></span>
+            </label>
+          </fieldset>
+
+          <label class="field export-format" for="exportFormat">
+            <span>Formato do arquivo</span>
+            <select id="exportFormat">
+              <option value="xlsx" selected>Excel (.xlsx) — recomendado</option>
+              <option value="csv">CSV (.csv)</option>
+              <option value="json">JSON (.json)</option>
+              <option value="zip">ZIP científico (.zip)</option>
+            </select>
+          </label>
+
+          <p class="export-note">
+            Unidade dos dados: mês × município ou unidade equivalente × tipologia. Valores
+            econômicos são mantidos em reais.
+          </p>
+          <p class="export-status" id="exportStatus" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="export-actions">
+          <button class="button secondary" type="button" id="cancelExport">Cancelar</button>
+          <button class="button export-confirm-button" type="button" id="confirmExport">Gerar arquivo</button>
+        </footer>
+      </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="detailModal" role="presentation">
+      <section class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow" id="detailEyebrow">Detalhes do município</p>
+            <h2 id="detailTitle">—</h2>
+          </div>
+          <button class="icon-button close-button" type="button" id="closeDetail" aria-label="Fechar detalhes">×</button>
+        </header>
+        <div class="modal-content" id="detailContent"></div>
+      </section>
+    </div>
+
+    <dialog class="welcome-dialog" id="welcomeDialog" aria-labelledby="welcomeTitle" aria-describedby="welcomeIntro">
+      <div class="welcome-content">
+        <p class="eyebrow">Bem-vindo</p>
+        <h2 id="welcomeTitle">Desastres Temporais</h2>
+        <p class="welcome-subtitle">Mapa interativo de ocorrências e impactos ao longo do tempo</p>
+        <p id="welcomeIntro">
+          Explore os registros oficiais de desastres no Brasil. Escolha o local, o período e o
+          tipo de desastre para visualizar ocorrências, danos humanos e prejuízos econômicos.
+          Use a reprodução para acompanhar as mudanças mês a mês.
+        </p>
+        <div id="welcomeConsent" hidden>
+          <p class="welcome-consent">
+            Podemos usar o Google Analytics para contar acessos e medir o alcance do projeto.
+            Essa opção fica desligada até você autorizar. Sua escolha pode ser revista em “Sobre e privacidade” ou, no celular, em “Opções → Privacidade e estatísticas de acesso”.
+          </p>
+          <label class="analytics-option" for="analyticsChoice">
+            <span><strong>Estatísticas de acesso</strong><small>Permitir cookies do Google Analytics para medir acessos, com informações técnicas e localização aproximada.</small></span>
+            <input id="analyticsChoice" type="checkbox" role="switch" aria-label="Autorizar estatísticas de acesso pelo Google Analytics">
+          </label>
+          <details class="welcome-privacy">
+            <summary>Como funciona a contagem?</summary>
+            <p>
+              Com sua autorização, o Google Analytics usa cookies para medir visualizações,
+              sessões e visitantes estimados. Recebe informações técnicas do navegador e pode
+              derivar localização aproximada pelo IP, incluindo país, estado e cidade.
+              A coleta de cidade vem junto com metadados técnicos de navegador e dispositivo.
+              Desativamos publicidade, Google Signals e medição otimizada nas configurações.
+              Não enviamos os filtros do mapa, municípios consultados nem parâmetros de links compartilhados.
+            </p>
+            <p>
+              O Google informa que o Analytics 4 usa o IP para derivar dados geográficos e depois
+              o descarta, sem registrá-lo. A coleta pode envolver tratamento de dados em outros países.
+              O painel do projeto é privado e administrado por Leonel Delmiro Fernandes.
+            </p>
+            <p>
+              Sua escolha fica salva neste navegador por até seis meses. Recusar não limita o
+              mapa; retirar a autorização interrompe novas contagens, sem apagar totais já agregados.
+              A hospedagem e os mapas de fundo têm suas próprias conexões, independentemente deste contador.
+              <a href="https://policies.google.com/technologies/partner-sites?hl=pt-BR" target="_blank" rel="noopener noreferrer">Como o Google usa os dados</a>.
+            </p>
+          </details>
+        </div>
+        <p class="welcome-note" id="welcomeNoCounter">Use os filtros e a linha do tempo para começar.</p>
+        <div class="welcome-actions">
+          <button class="button welcome-choice" id="saveVisitChoice" type="button" hidden>Salvar minha escolha</button>
+          <button class="button welcome-choice" id="acceptVisit" type="button" hidden>Concordo e continuar</button>
+          <button class="button welcome-choice" id="declineVisit" type="button" hidden>Continuar sem contabilizar</button>
+          <button class="button" id="continueWelcome" type="button">Explorar mapa</button>
+        </div>
+      </div>
+    </dialog>
+
+    <noscript>
+      <p class="noscript">Ative o JavaScript para visualizar o mapa e a linha temporal.</p>
+    </noscript>
+  </body>
+</html>
+
