@@ -60,7 +60,43 @@ p { margin: 10px 0; line-height: 1.5; }
 .sovi-scale { display: flex; justify-content: space-between; margin-top: 2px; font-variant-numeric: tabular-nums; }
 #rev18-support { margin: 14px 0 8px; }
 .chart-subtitle { margin: 0 0 8px; color: var(--foreground); font-size: 1rem; }
-#rev18-scatter-section { margin-top: 38px; padding-top: 26px; border-top: 1px solid var(--border); }
+#rev18-bars-section, #rev18-scatter-section {
+  padding: 18px 20px 24px;
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--section-accent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--section-accent) 4%, var(--background));
+}
+#rev18-bars-section { --section-accent: var(--primary); --section-badge-text: #07111f; }
+#rev18-scatter-section { --section-accent: var(--viz-series-2); --section-badge-text: #07111f; margin-top: 52px; }
+:root[data-theme="light"] #rev18-bars-section,
+:root[data-theme="light"] #rev18-scatter-section { --section-badge-text: #fff; }
+.viz-section-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin: -18px -20px 22px;
+  padding: 16px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--section-accent) 44%, var(--border));
+  border-radius: 10px 10px 0 0;
+  background: color-mix(in srgb, var(--section-accent) 14%, var(--background));
+  font-size: 1.65rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+.viz-section-number {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--section-accent);
+  color: var(--section-badge-text);
+  font-size: .85rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .viz-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
 #rev18-stats { margin-bottom: 0; }
 .card { padding: 12px; border-radius: 9px; background: var(--card); min-width: 0; }
@@ -92,6 +128,8 @@ p { margin: 10px 0; line-height: 1.5; }
 #rev18-analogos svg { display: block; width: 100%; height: auto; }
 @media (max-width: 620px) {
   .viz-controls, .viz-grid { grid-template-columns: 1fr; }
-  #rev18-scatter-section { margin-top: 32px; padding-top: 24px; }
+  #rev18-bars-section, #rev18-scatter-section { padding: 15px 13px 18px; }
+  #rev18-scatter-section { margin-top: 36px; }
+  .viz-section-title { margin: -15px -13px 18px; padding: 14px 12px; font-size: 1.35rem; }
   .table { min-width: 640px; }
 }
