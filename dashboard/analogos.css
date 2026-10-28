@@ -58,7 +58,11 @@ p { margin: 10px 0; line-height: 1.5; }
 .sovi-level[data-cat="5"] { --level-color: #ed5c6d; }
 .sovi-scale { display: flex; justify-content: space-between; margin-top: 2px; font-variant-numeric: tabular-nums; }
 #rev18-support { margin: 14px 0 8px; }
+.chart-section-label { margin: 0 0 5px; color: var(--muted-foreground); font-size: .86rem; font-weight: 500; }
+#rev18-chart-title, #rev18-scatter-title { margin-top: 0; }
+#rev18-scatter-section { margin-top: 38px; padding-top: 26px; border-top: 1px solid var(--border); }
 .viz-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+#rev18-stats { margin-bottom: 0; }
 .card { padding: 12px; border-radius: 9px; background: var(--card); min-width: 0; }
 .viz-stat-value { margin-top: 5px; font-size: 1.4rem; font-weight: 500; }
 .table-responsive { width: 100%; overflow-x: auto; }
@@ -88,5 +92,6 @@ p { margin: 10px 0; line-height: 1.5; }
 #rev18-analogos svg { display: block; width: 100%; height: auto; }
 @media (max-width: 620px) {
   .viz-controls, .viz-grid { grid-template-columns: 1fr; }
+  #rev18-scatter-section { margin-top: 32px; padding-top: 24px; }
   .table { min-width: 640px; }
 }

@@ -24,3 +24,5 @@ As faixas extremas e algumas combinações de chuva, SoVI e ICM têm poucos muni
 - Capacidade municipal (ICM): [Indicador de Capacidade Municipal, MIDR](https://www.gov.br/mdr/pt-br/assuntos/protecao-e-defesa-civil/icm).
 
 O painel foi concebido para testar a interação visual antes de qualquer incorporação ao site principal. Não reutilizar seus números como resultados finais do Artigo 03 sem confrontá-los com as tabelas e o manuscrito REV18.
+
+A [análise exploratória da reta SoVI–ICM](analises/tendencia_sovi_icm.md), com um [script R reproduzível](analises/tendencia_sovi_icm.R), foi guardada para avaliação posterior. A reta ainda não aparece no dashboard.
