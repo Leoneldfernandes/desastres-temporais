@@ -29,7 +29,8 @@
 html, body { margin: 0; }
 body { color: var(--foreground); background: var(--background); }
 #rev18-analogos { padding: 12px; }
-h2 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 500; }
+h1.panel-context { margin: 0 0 13px; color: var(--muted-foreground); font-size: .95rem; font-weight: 500; }
+h2 { margin: 0 0 9px; font-size: 1.25rem; font-weight: 500; }
 h3 { margin: 12px 0 8px; font-size: 1.1rem; font-weight: 500; }
 p { margin: 10px 0; line-height: 1.5; }
 .text-small { font-size: .86rem; }
@@ -58,8 +59,7 @@ p { margin: 10px 0; line-height: 1.5; }
 .sovi-level[data-cat="5"] { --level-color: #ed5c6d; }
 .sovi-scale { display: flex; justify-content: space-between; margin-top: 2px; font-variant-numeric: tabular-nums; }
 #rev18-support { margin: 14px 0 8px; }
-.chart-section-label { margin: 0 0 5px; color: var(--muted-foreground); font-size: .86rem; font-weight: 500; }
-#rev18-chart-title, #rev18-scatter-title { margin-top: 0; }
+.chart-subtitle { margin: 0 0 8px; color: var(--foreground); font-size: 1rem; }
 #rev18-scatter-section { margin-top: 38px; padding-top: 26px; border-top: 1px solid var(--border); }
 .viz-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
 #rev18-stats { margin-bottom: 0; }
