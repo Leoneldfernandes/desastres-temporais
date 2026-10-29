@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Painel de testes | Desastres Temporais</title>
-  <link rel="stylesheet" href="analogos.css?v=9">
-  <script defer src="analogos.js?v=4"></script>
+  <link rel="stylesheet" href="analogos.css?v=10">
+  <script defer src="analogos.js?v=5"></script>
   <script>
     const syncTheme = () => {
       try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
@@ -73,6 +73,28 @@
   </section>
   <section id="rev18-scatter-section" aria-labelledby="rev18-scatter-title">
     <h2 id="rev18-scatter-title" class="viz-section-title"><span class="viz-section-number">Gráfico 2</span><span>Municípios por SoVI e ICM</span></h2>
+    <div class="scatter-controls" aria-label="Controles do Gráfico 2, sincronizados com o Gráfico 1">
+      <div class="control">
+        <label class="form-label" for="rev18-scatter-mode">Desfecho</label>
+        <select class="form-select" id="rev18-scatter-mode">
+          <option value="registro">Dias com registro</option>
+          <option value="presenca">Protocolos com dano</option>
+          <option value="magnitude">Magnitude do dano positivo</option>
+        </select>
+      </div>
+      <div class="control">
+        <label class="form-label" for="rev18-scatter-rain">Chuva: <strong id="rev18-scatter-rain-value" class="tabular-nums"></strong></label>
+        <input class="form-range" id="rev18-scatter-rain" type="range" min="0" max="200" step="10" value="60">
+      </div>
+      <div class="control">
+        <label class="form-label" for="rev18-scatter-sovi">SoVI do perfil: <strong id="rev18-scatter-sovi-value" class="tabular-nums"></strong></label>
+        <input class="form-range" id="rev18-scatter-sovi" type="range" min="-3.5" max="1.9" step="0.1" value="0">
+      </div>
+      <div class="control">
+        <label class="form-label" for="rev18-scatter-icm">ICM do perfil: <strong id="rev18-scatter-icm-value" class="tabular-nums"></strong></label>
+        <input class="form-range" id="rev18-scatter-icm" type="range" min="7" max="20" step="1" value="14">
+      </div>
+    </div>
     <p class="text-small text-muted">Arraste o ponto amarelo ou clique na área do gráfico para definir SoVI e ICM. Clique em outro ponto para consultar um município.</p>
     <svg id="rev18-scatter" role="img" aria-label="Municípios no plano SoVI e ICM conforme o desfecho e a chuva selecionados"></svg>
     <div class="scatter-legend text-small">
@@ -81,7 +103,10 @@
       <span><i class="scatter-key near"></i>Perfil próximo</span>
       <span><i class="scatter-key weak"></i><span id="rev18-scatter-weak">Poucos dados</span></span>
       <span><i class="scatter-key chosen"></i>Perfil escolhido</span>
+      <span><i class="scatter-line-key"></i>Ajuste linear SoVI–ICM</span>
     </div>
+    <p id="rev18-scatter-trend-stats" class="text-small scatter-trend-stats"></p>
+    <p class="text-small text-muted scatter-trend-explain">A reta relaciona SoVI e ICM e permanece fixa; as cores dos pontos representam o desfecho histórico conforme a chuva escolhida. O R² da reta não mede registros nem danos.</p>
     <p id="rev18-scatter-detail" class="text-small" role="status" aria-live="polite"></p>
     <p id="rev18-scatter-scale" class="text-small text-muted"></p>
     <div class="viz-comparisons" aria-labelledby="rev18-scatter-comparisons-title">

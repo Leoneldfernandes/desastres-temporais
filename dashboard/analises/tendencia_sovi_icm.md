@@ -1,6 +1,6 @@
 # Reta exploratória entre SoVI e ICM — guardar para avaliação posterior
 
-Esta análise foi calculada para o gráfico de pontos do painel experimental do Artigo 03, mas **a reta não foi adicionada ao dashboard**. O arquivo `tendencia_sovi_icm.R` reproduz os números abaixo a partir de `dashboard/analogos.json`, o recorte congelado REV18 de 2017–2025.
+Esta análise foi calculada para o gráfico de pontos do painel experimental do Artigo 03. A reta foi adicionada ao Gráfico 2 do dashboard em 28/10/2026, com traço discreto e explicação de que relaciona apenas SoVI e ICM. O arquivo `tendencia_sovi_icm.R` reproduz os números abaixo a partir de `dashboard/analogos.json`, o recorte congelado REV18 de 2017–2025.
 
 ## Resultado
 

@@ -38,6 +38,14 @@
     presenca: {window:'6 dias',max:400,field:'r6',edges:[0,30,60,90,120,160,220,300,400,Infinity],n:'protocolos',y:'Protocolos com dano (%)'},
     magnitude: {window:'3 dias',max:350,field:'r3',edges:[0,25,50,75,100,140,190,260,350,Infinity],n:'protocolos positivos',y:'Mediana dos danos humanos'}
   };
+  const trend=(()=>{
+    const n=cities.length, mx=cities.reduce((sum,c)=>sum+c.sovi,0)/n, my=cities.reduce((sum,c)=>sum+c.icm,0)/n;
+    const sxx=cities.reduce((sum,c)=>sum+(c.sovi-mx)**2,0);
+    const syy=cities.reduce((sum,c)=>sum+(c.icm-my)**2,0);
+    const sxy=cities.reduce((sum,c)=>sum+(c.sovi-mx)*(c.icm-my),0);
+    const slope=sxy/sxx, intercept=my-slope*mx, r=sxy/Math.sqrt(sxx*syy);
+    return {n,slope,intercept,r,r2:r*r};
+  })();
   let selectedScatterCity = null;
   let scatterPointer = null;
   let moveScatterPointer = () => {};
@@ -202,6 +210,14 @@
   }
   function renderScatter(){
     const points=scatterPoints(),conf=config[state.mode],tol=tolerance();
+    el('rev18-scatter-mode').value=state.mode;
+    const rainControl=el('rev18-scatter-rain');rainControl.max=conf.max;rainControl.value=state.rain;
+    el('rev18-scatter-rain-value').textContent=`${fmt(state.rain)} mm em ${conf.window}`;
+    const soviControl=el('rev18-scatter-sovi');soviControl.value=state.soviValue;
+    soviControl.setAttribute('aria-valuetext',`${fmt(state.soviValue,1)}; vulnerabilidade ${labels[soviCategory(state.soviValue)].toLowerCase()}`);
+    el('rev18-scatter-sovi-value').textContent=`${fmt(state.soviValue,1)} · ${labels[soviCategory(state.soviValue)].toLowerCase()}`;
+    el('rev18-scatter-icm').value=state.icm;
+    el('rev18-scatter-icm-value').textContent=fmt(state.icm);
     const ranked=[...points].sort((a,b)=>{
       const score=point=>Math.abs(point.sovi-state.soviValue)+Math.abs(point.icm-state.icm)/3;
       return score(a)-score(b)||a.name.localeCompare(b.name,'pt-BR');
@@ -219,7 +235,7 @@
     svg.setAttribute('aria-label',`${conf.y}; chuva de ${fmt(state.rain)} ± ${fmt(tol)} mm; ${points.length} municípios`);
     svg.replaceChildren();
     svg.appendChild(node('title',{},'Municípios por SoVI e ICM'));
-    svg.appendChild(node('desc',{},'A intensidade da cor representa o resultado observado. Círculos tracejados têm poucos dados.'));
+    svg.appendChild(node('desc',{},'A intensidade da cor representa o resultado observado. A reta fixa representa o ajuste linear entre SoVI e ICM, não uma relação com registros ou danos. Círculos tracejados têm poucos dados.'));
     const lowX=Math.min(...points.map(point=>point.sovi))-.15;
     const highX=Math.max(...points.map(point=>point.sovi))+.15;
     const x=value=>margin.left+8+(value-lowX)/(highX-lowX)*(plotW-16);
@@ -250,6 +266,16 @@
     }
     svg.appendChild(node('text',{x:margin.left+plotW/2,y:height-8,'text-anchor':'middle',class:'axis-title','data-axis':'x'},'SoVI (escore numérico)'));
     svg.appendChild(node('text',{transform:`translate(16,${margin.top+plotH/2}) rotate(-90)`,'text-anchor':'middle',class:'axis-title','data-axis':'y'},'ICM (pontos)'));
+    const minObserved=Math.min(...cities.map(city=>city.sovi));
+    const maxObserved=Math.max(...cities.map(city=>city.sovi));
+    const lineStart=Math.max(minObserved,(7-trend.intercept)/trend.slope);
+    const lineEnd=Math.min(maxObserved,(20-trend.intercept)/trend.slope);
+    svg.appendChild(node('line',{
+      x1:x(lineStart),y1:y(trend.intercept+trend.slope*lineStart),
+      x2:x(lineEnd),y2:y(trend.intercept+trend.slope*lineEnd),
+      class:'scatter-trend-line','pointer-events':'none',
+      'aria-label':'Ajuste linear fixo entre SoVI e ICM'
+    }));
     for(const point of points){
       const weak=point.n<minimum;
       const label=`${point.name} · SoVI ${fmt(point.sovi,2)} · ICM ${point.icm} · ${point.value===null?'sem observações comparáveis':fmt(point.value,1)+' '+conf.y} · n=${fmt(point.n)}`;
@@ -269,6 +295,7 @@
     const handle=node('circle',{cx:x(state.soviValue),cy:y(state.icm),r:22,fill:'transparent',class:'scatter-drag-target','aria-label':`Perfil escolhido: SoVI ${fmt(state.soviValue,1)}, ICM ${state.icm}. Arraste para alterar.`});
     handle.appendChild(node('title',{},'Arraste para mudar SoVI e ICM'));
     handle.addEventListener('pointerdown',startScatterDrag);svg.appendChild(handle);
+    el('rev18-scatter-trend-stats').textContent=`ICM = ${fmt(trend.intercept,2)} + ${fmt(trend.slope,2)} × SoVI · r = ${fmt(trend.r,3)} · R² = ${fmt(trend.r2,3)} · p nominal < 0,001 · n = ${trend.n}`;
     scatterDetail(points,nearest,tol);
   }
   function cell(tr,text){const td=document.createElement('td');td.textContent=text;tr.appendChild(td);}
@@ -337,6 +364,13 @@
   el('rev18-sovi').addEventListener('change',saveState);
   el('rev18-icm').addEventListener('input',e=>{state.icm=Number(e.target.value);selectedScatterCity=null;update();});
   el('rev18-icm').addEventListener('change',saveState);
+  el('rev18-scatter-mode').addEventListener('change',event=>{state.mode=event.target.value;state.rain=Math.min(state.rain,config[state.mode].max);selectedScatterCity=null;update();saveState();});
+  el('rev18-scatter-rain').addEventListener('input',event=>{state.rain=Number(event.target.value);selectedScatterCity=null;update();});
+  el('rev18-scatter-rain').addEventListener('change',saveState);
+  el('rev18-scatter-sovi').addEventListener('input',event=>{state.soviValue=Number(event.target.value);selectedScatterCity=null;update();});
+  el('rev18-scatter-sovi').addEventListener('change',saveState);
+  el('rev18-scatter-icm').addEventListener('input',event=>{state.icm=Number(event.target.value);selectedScatterCity=null;update();});
+  el('rev18-scatter-icm').addEventListener('change',saveState);
   const scatter=el('rev18-scatter');
   scatter.addEventListener('pointermove',event=>{
     if(scatterPointer===event.pointerId)moveScatterPointer(event);
