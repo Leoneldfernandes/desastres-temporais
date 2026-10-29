@@ -176,6 +176,21 @@
     el('rev18-scatter-detail').textContent=chosen
       ? `${chosen.name} · SoVI ${fmt(chosen.sovi,2)} · ICM ${chosen.icm} · ${chosen.value===null?'sem observações comparáveis':fmt(chosen.value,1)+' '+unit} · n=${fmt(chosen.n)}${chosen.n<minimum?' (poucas observações)':''}.`
       : `Perfis próximos: ${nearest.map(point=>point.name).join(', ')}. Chuva ${fmt(state.rain)} ± ${fmt(tol)} mm; ${supported} de ${points.length} municípios com ao menos ${minimum} ${state.mode==='registro'?'dias':'protocolos'} comparáveis.`;
+    el('rev18-scatter-value-head').textContent=unit;
+    el('rev18-scatter-n-head').textContent=state.mode==='registro'?'Base (dias)':state.mode==='presenca'?'Base (protocolos)':'Base (protocolos com dano)';
+    const tbody=el('rev18-scatter-rows');tbody.replaceChildren();
+    const rows=chosen&&!nearest.some(point=>point.id===chosen.id)?[chosen,...nearest]:nearest;
+    for(const point of rows){
+      const tr=document.createElement('tr'),isChosen=point.id===selectedScatterCity;
+      if(isChosen)tr.className='is-selected';
+      cell(tr,isChosen?'Consultado': 'Perfil próximo');
+      cell(tr,point.name);
+      cell(tr,fmt(point.sovi,2));
+      cell(tr,fmt(point.icm));
+      cell(tr,point.value===null?'—':fmt(point.value,1)+(state.mode==='presenca'?'%':''));
+      cell(tr,fmt(point.n)+(point.n<minimum?' · poucos dados':''));
+      tbody.appendChild(tr);
+    }
   }
   function startScatterDrag(event){
     if(event.button!==undefined&&event.button!==0)return;

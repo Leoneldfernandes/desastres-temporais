@@ -99,6 +99,8 @@ p { margin: 10px 0; line-height: 1.5; }
 }
 .viz-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
 #rev18-stats { margin-bottom: 0; }
+.viz-comparisons { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); }
+.viz-comparisons h3 { margin: 0 0 10px; font-size: 1.12rem; font-weight: 650; }
 .card { padding: 12px; border-radius: 9px; background: var(--card); min-width: 0; }
 .viz-stat-value { margin-top: 5px; font-size: 1.4rem; font-weight: 500; }
 .table-responsive { width: 100%; overflow-x: auto; }
@@ -106,6 +108,7 @@ p { margin: 10px 0; line-height: 1.5; }
 .table th, .table td { padding: 8px 6px; border-bottom: 1px solid var(--border); }
 .table th { font-weight: 500; }
 .table td:nth-child(3), .table td:nth-child(4), .table td:nth-child(5) { font-variant-numeric: tabular-nums; }
+#rev18-scatter-rows tr.is-selected { background: color-mix(in srgb, var(--viz-series-2) 12%, transparent); }
 #rev18-examples { margin-top: 10px; }
 .scatter-legend { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 6px 0; color: var(--muted-foreground); }
 .scatter-legend span { display: inline-flex; align-items: center; gap: 5px; }
