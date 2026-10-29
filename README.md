@@ -6,6 +6,8 @@ O Dashboard contém um protótipo exploratório do Artigo 03, com três desfecho
 
 As rotinas automáticas de atualização e validação do repositório original foram removidas desta cópia; o estado do Atlas é lido do arquivo local. A medição por Google Analytics foi desativada. O restante desta documentação foi herdado do projeto principal e pode mencionar o ambiente de produção.
 
+A cada publicação neste ambiente de testes, atualizar a data **Última atualização do site** na seção **Atualização do site** de `index.html`. Preservar a data original de implementação (20/08/2026) e não confundir essa data do site com a última verificação da base do Atlas.
+
 ---
 
 ## Documentação herdada do site principal
