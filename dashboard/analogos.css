@@ -67,7 +67,13 @@ p { margin: 10px 0; line-height: 1.5; }
   border-radius: 14px;
   background: color-mix(in srgb, var(--section-accent) 4%, var(--background));
 }
-#rev18-bars-section { --section-accent: var(--primary); --section-badge-text: #07111f; }
+#rev18-bars-section {
+  --section-accent: var(--primary);
+  --section-badge-text: #07111f;
+  height: 1200px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 #rev18-scatter-section { --section-accent: var(--viz-series-2); --section-badge-text: #07111f; margin-top: 52px; }
 :root[data-theme="light"] #rev18-bars-section,
 :root[data-theme="light"] #rev18-scatter-section { --section-badge-text: #fff; }
@@ -138,7 +144,11 @@ p { margin: 10px 0; line-height: 1.5; }
 @media (max-width: 620px) {
   .viz-controls, .viz-grid, .scatter-controls { grid-template-columns: 1fr; }
   #rev18-bars-section, #rev18-scatter-section { padding: 15px 13px 18px; }
+  #rev18-bars-section { height: 1750px; }
   #rev18-scatter-section { margin-top: 36px; }
   .viz-section-title { margin: -15px -13px 18px; padding: 14px 12px; font-size: 1.35rem; }
   .table { min-width: 640px; }
+}
+@media (max-width: 300px) {
+  #rev18-bars-section { height: 1950px; }
 }
