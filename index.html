@@ -12,7 +12,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <script src="assets/js/theme.js?v=ba9b626daf28"></script>
     <link rel="stylesheet" href="assets/vendor/leaflet.css">
-    <link rel="stylesheet" href="assets/css/app.css?v=aac9bbb09a7d">
+    <link rel="stylesheet" href="assets/css/app.css?v=e98023c66ae6">
     <script defer src="assets/vendor/leaflet.js"></script>
     <script defer src="assets/js/export.js?v=d16158b5fa13" data-export-worker="assets/js/export-worker.js?v=8e0c5b81069c"></script>
     <script defer src="assets/js/mobile-ui.js?v=4e3fae25a4f6"></script>
@@ -20,7 +20,7 @@
     <script defer src="assets/js/layout-shortcuts.js?v=77a18e628f5c"></script>
     <script defer src="assets/js/app.js?v=4abae545a645"></script>
     <script defer src="assets/js/navigation.js?v=7768ed604c0b"></script>
-    <script defer src="assets/js/dashboard-embed.js?v=1b136b368906"></script>
+    <script defer src="assets/js/dashboard-embed.js?v=614981aa8924"></script>
     <script defer src="assets/js/visitor-config.js?v=ce2fa60f70af"></script>
     <script defer src="assets/js/welcome.js?v=ea12c0721ee8"></script>
   </head>
@@ -156,7 +156,7 @@
                 </div>
                 <div>
                   <dt>Última atualização do site</dt>
-                  <dd><time datetime="2026-10-28">28/10/2026</time></dd>
+                  <dd><time datetime="2026-11-05">05/11/2026</time></dd>
                 </div>
               </dl>
             </section>
@@ -533,6 +533,12 @@
         <p class="site-page-note">Este painel mostra frequências observadas da pesquisa, sem estimar risco individual ou efeitos causais. Combinações com poucos dados exigem cautela.</p>
         <iframe id="analogosFrame" class="dashboard-analogos-frame" src="dashboard/analogos.html?v=11" title="Painel interativo de registros e danos humanos" loading="lazy"></iframe>
         <p class="site-page-note dashboard-sources">Fontes: registros do <a href="https://atlasdigital.mdr.gov.br/" target="_blank" rel="noopener">Atlas Digital/MIDR</a>; precipitação EPAGRI-CIRAM, complementada por INMET; SoVI de <a href="https://repositorio.ufsc.br/handle/123456789/264180" target="_blank" rel="noopener">Júlia Boelter Nickel</a>; <a href="https://www.gov.br/mdr/pt-br/assuntos/protecao-e-defesa-civil/icm" target="_blank" rel="noopener">ICM/MIDR</a>. Tratamentos e limitações: Artigo 03, revisão 18.</p>
+        <section class="dashboard-simulator" aria-labelledby="dashboardSimulatorTitle">
+          <h3 id="dashboardSimulatorTitle"><span class="dashboard-simulator-badge">Gráfico 3</span> Simulador exploratório de chuva por município</h3>
+          <p>Escolha um município, o mês e a chuva de seis dias para explorar três estimativas condicionais do piloto REV20. “Hoje” representa o dia hipotético do cenário.</p>
+          <p class="site-page-note">Modelos ajustados em 2017–2023 e conferidos em 2024–2025. A média de danos inclui dias registrados com zero e permanece incerta; este recurso não serve para alerta operacional. Consulte a <a href="dashboard/simulador-rev20-metodologia.md">metodologia e as limitações</a>.</p>
+          <iframe id="simuladorFrame" class="dashboard-simulator-frame" src="dashboard/simulador-rev20.html?v=1" title="Gráfico 3: simulador exploratório de chuva por município" loading="lazy"></iframe>
+        </section>
       </div>
     </section>
 

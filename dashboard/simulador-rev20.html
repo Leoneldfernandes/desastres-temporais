@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Simulador exploratório REV20 | Desastres Temporais</title>
+  <link rel="stylesheet" href="analogos.css?v=10">
+  <link rel="stylesheet" href="simulador-rev20.css?v=1">
+  <link rel="stylesheet" href="simulador-site.css?v=1">
+  <script defer src="simulador-rev20.js?v=1"></script>
+  <script>
+    const syncTheme = () => {
+      try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
+      catch (_) { document.documentElement.dataset.theme = 'dark'; }
+    };
+    syncTheme();
+    try { new MutationObserver(syncTheme).observe(parent.document.documentElement, {attributes: true, attributeFilter: ['data-theme']}); }
+    catch (_) {}
+  </script>
+</head>
+<body>
+<div id="tres-janelas-rev20">
+
+  <h1>Chuva diária e acumulada</h1>
+  <div class="selectors viz-controls">
+    <label class="field form-label" for="tj-city">Município<select class="form-select" id="tj-city"></select></label>
+    <label class="field form-label" for="tj-month">Mês<select class="form-select" id="tj-month"></select></label>
+  </div>
+  <h2>Chuva em cada dia</h2>
+  <div class="rain-editor" id="tj-rain-editor"></div>
+  <p class="text-small text-muted">Os gráficos somam esses dias. Arraste um ponto: 1 dia muda hoje; 3 dias redistribui ontem e anteontem; 6 dias redistribui os três dias anteriores.</p>
+  <div class="chart-section"><div class="chart-head"><h2>1 dia · registro</h2><strong id="tj-label-reg" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-reg" role="img" aria-label="Arraste o ponto para alterar a chuva de um dia e a chance de registro"></div></div>
+  <div class="chart-section"><div class="chart-head"><h2>3 dias · danos humanos médios</h2><strong id="tj-label-count" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-count" role="img" aria-label="Arraste o ponto para alterar a chuva de três dias e a quantidade média de danos humanos"></div></div>
+  <div class="chart-section"><div class="chart-head"><h2>6 dias · presença de dano humano</h2><strong id="tj-label-pres" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-pres" role="img" aria-label="Arraste o ponto para alterar a chuva de seis dias e a chance de dano humano"></div></div>
+  <div class="viz-grid" aria-live="polite">
+    <div class="card viz-stat"><div class="text-small text-muted">Chance de registro</div><div class="viz-stat-value tabular-nums" id="tj-reg">—</div><div class="text-small text-muted">Ao menos um protocolo</div></div>
+    <div class="card viz-stat"><div class="text-small text-muted">Chance de dano humano se registrado</div><div class="viz-stat-value tabular-nums" id="tj-pres">—</div><div class="text-small text-muted">Dano humano informado maior que zero</div></div>
+    <div class="card viz-stat"><div class="text-small text-muted">Danos humanos médios se registrado</div><div class="viz-stat-value tabular-nums" id="tj-count">—</div><div class="text-small text-muted">Inclui dias com zero dano humano</div></div>
+  </div>
+  <h2>Registros históricos mais semelhantes</h2>
+  <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Data e tipologia</th><th>Chuva observada 1 / 3 / 6 dias</th><th>Danos humanos informados</th></tr></thead><tbody id="tj-history"></tbody></table></div>
+  <p id="tj-warning" class="text-small text-destructive" hidden></p>
+  <p class="mini-note text-small">Para redistribuir 3 ou 6 dias, a proporção já informada entre os dias é preservada; se todos eram zero, o novo volume é dividido igualmente. Piloto REV20: associação com protocolos informados; a contagem de danos humanos ainda é incerta e não serve para alerta operacional.</p>
+  <p class="mini-note text-small">Fontes: Atlas Digital/MIDR; chuva EPAGRI/Ciram com INMET complementar; SoVI sistematizado por Júlia Boelter Nickel; ICM/MIDR. Amostra e tratamentos: REV20 do artigo.</p>
+
+
+</div>
+<script>
+  const reportSize = () => {
+    try {
+      parent.postMessage({source: 'desastres-temporais-simulador', height: Math.ceil(document.documentElement.scrollHeight) + 8}, location.origin);
+    } catch (_) {}
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(reportSize).observe(document.body);
+  window.addEventListener('load', reportSize);
+  document.fonts?.ready.then(reportSize);
+</script>
+</body>
+</html>

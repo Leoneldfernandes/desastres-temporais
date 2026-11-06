@@ -2,7 +2,7 @@
 
 Esta é uma cópia de desenvolvimento do [Desastres no Brasil](https://github.com/Leoneldfernandes/desastres-no-brasil). O site principal não recebe as mudanças feitas aqui. O endereço deste teste é separado e não é divulgado no site principal; quem tiver o endereço poderá acessá-lo. A cópia usa `noindex` e `robots.txt` para desencorajar indexação, sem tratar isso como controle de acesso.
 
-O Dashboard contém um protótipo exploratório do Artigo 03, com três desfechos (dia municipal com registro, presença de dano no protocolo e magnitude do dano positivo) e três opções para o eixo horizontal (precipitação, SoVI e ICM). Os outros dois controles restringem as situações históricas comparadas. Consulte [a documentação do painel](dashboard/LEIA_ME.md) antes de interpretar as barras.
+O Dashboard contém dois gráficos descritivos com frequências históricas e três desfechos (dia municipal com registro, presença de dano no protocolo e magnitude do dano positivo), além do **Gráfico 3**, um simulador exploratório de cenários de chuva por município baseado no piloto REV20. Consulte a [documentação dos gráficos descritivos](dashboard/LEIA_ME.md) e a [metodologia do simulador](dashboard/simulador-rev20-metodologia.md) antes de interpretar os números.
 
 As rotinas automáticas de atualização e validação do repositório original foram removidas desta cópia; o estado do Atlas é lido do arquivo local. A medição por Google Analytics foi desativada. O restante desta documentação foi herdado do projeto principal e pode mencionar o ambiente de produção.
 
