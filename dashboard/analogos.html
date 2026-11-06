@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Painel de testes | Desastres Temporais</title>
-  <link rel="stylesheet" href="analogos.css?v=11">
-  <script defer src="analogos.js?v=5"></script>
+  <link rel="stylesheet" href="analogos.css?v=12">
+  <script defer src="analogos.js?v=6"></script>
   <script>
     const syncTheme = () => {
       try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
@@ -21,7 +21,8 @@
 <div id="rev18-analogos">
   <h1 class="sr-only">Painel experimental do Artigo 03</h1>
   <section id="rev18-bars-section" aria-labelledby="rev18-bars-title">
-    <h2 id="rev18-bars-title" class="viz-section-title"><span class="viz-section-number">Gráfico 1</span><span>Comparação por faixas</span></h2>
+    <h2 id="rev18-bars-title" class="viz-section-title"><span class="viz-section-number">Gráfico 1</span><span>Comparação por faixas</span><button type="button" class="viz-collapse" id="rev18-bars-toggle" aria-controls="rev18-bars-content" aria-expanded="true" aria-label="Minimizar Gráfico 1">Minimizar</button></h2>
+    <div id="rev18-bars-content">
     <div class="viz-row" aria-label="Desfecho analisado">
     <button type="button" class="btn" data-mode="registro" aria-pressed="true">Registros</button>
     <button type="button" class="btn" data-mode="presenca" aria-pressed="false">Presença de dano</button>
@@ -70,9 +71,11 @@
       </div>
       <div id="rev18-examples" class="text-small"></div>
     </div>
+    </div>
   </section>
   <section id="rev18-scatter-section" aria-labelledby="rev18-scatter-title">
-    <h2 id="rev18-scatter-title" class="viz-section-title"><span class="viz-section-number">Gráfico 2</span><span>Municípios por SoVI e ICM</span></h2>
+    <h2 id="rev18-scatter-title" class="viz-section-title"><span class="viz-section-number">Gráfico 2</span><span>Municípios por SoVI e ICM</span><button type="button" class="viz-collapse" id="rev18-scatter-toggle" aria-controls="rev18-scatter-content" aria-expanded="true" aria-label="Minimizar Gráfico 2">Minimizar</button></h2>
+    <div id="rev18-scatter-content">
     <div class="scatter-controls" aria-label="Controles do Gráfico 2, sincronizados com o Gráfico 1">
       <div class="control">
         <label class="form-label" for="rev18-scatter-mode">Desfecho</label>
@@ -118,6 +121,7 @@
           <tbody id="rev18-scatter-rows"></tbody>
         </table>
       </div>
+    </div>
     </div>
   </section>
   <p class="text-small text-muted">Fonte: base analítica do Artigo 03, revisão 18, Santa Catarina, 2017–2025. Os números são frequências históricas de perfis próximos; o teste não prevê o resultado do município fictício.</p>
