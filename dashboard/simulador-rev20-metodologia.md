@@ -10,7 +10,7 @@ O botão **Minimizar/Expandir** recolhe o Gráfico 3 para liberar espaço na tel
 - **Chance de dano humano se houver registro:** probabilidade estimada de dano humano informado positivo entre os dias com registro. Modelo logístico com chuva de 6 dias, SoVI, ICM e mês.
 - **Média de danos humanos se houver registro:** média estimada da soma dos danos informados nos protocolos daquele dia, **incluindo dias registrados com zero**. Modelo de Poisson com `log(1 + chuva acumulada de 3 dias em unidades de 10 mm)`, SoVI, ICM e mês. A soma não representa pessoas únicas.
 
-Os modelos compartilhados foram ajustados em **2017–2023** e conferidos em **2024–2025**. O município selecionado fornece os valores fixos de SoVI e ICM; o mês e as seis chuvas diárias completam o cenário. Florianópolis é a seleção inicial e pode ser trocada. A amostra contém 128 municípios com dados completos para esta análise. Os 1.054 episódios da tabela histórica são dias com registro, não todas as observações usadas no ajuste de registro.
+Os modelos compartilhados foram ajustados em **2017–2023** e conferidos em **2024–2025**. O município selecionado fornece os valores fixos de SoVI e ICM; o mês e as seis chuvas diárias completam o cenário. Florianópolis é a seleção inicial e pode ser trocada. A lista reúne **128 dos 295 municípios de Santa Catarina** com observações na amostra analítica comum de precipitação, SoVI e ICM. A ausência de um município da lista não indica ausência de desastre: ele não dispõe das informações conjuntas exigidas para este painel. Os 1.054 episódios da tabela histórica são dias com registro, não todas as observações usadas no ajuste de registro.
 
 ## Interação das chuvas
 

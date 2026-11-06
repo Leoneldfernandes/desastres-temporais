@@ -38,6 +38,18 @@ def main() -> None:
     if not any(city["id"] == "4205407" for city in parsed["municipios"]):
         raise ValueError("Florianópolis is absent from the approved sample")
 
+    markup_text = markup.group(1)
+    city_heading = "<h2>1 · Escolha o município e o mês</h2>"
+    city_scope = (
+        '<p class="muted">A lista inclui 128 dos 295 municípios de Santa Catarina '
+        'com observações de chuva, SoVI e ICM na amostra analítica REV20 '
+        '(2017–2025). Um município ausente da lista não significa ausência de '
+        'desastres.</p>'
+    )
+    if markup_text.count(city_heading) != 1:
+        raise ValueError("Unexpected municipality heading")
+    markup_text = markup_text.replace(city_heading, city_heading + city_scope, 1)
+
     js = script.group(1).strip()
     original = "const data=JSON.parse(document.getElementById('dataset').textContent);"
     replacement = """(async () => {
@@ -80,7 +92,7 @@ try {
   </script>
 </head>
 <body>
-""" + markup.group(1) + """
+""" + markup_text + """
 <script>
   const reportSize = () => {
     try {
