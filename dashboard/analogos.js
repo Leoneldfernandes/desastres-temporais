@@ -393,9 +393,29 @@
   const reportSize = () => {
     window.parent.postMessage({
       source: 'desastres-temporais-analogos',
-      height: Math.ceil(document.documentElement.scrollHeight)
+      height: Math.ceil(root.getBoundingClientRect().height) + 8
     }, window.location.origin);
   };
+  for (const [sectionId, contentId, toggleId, number] of [
+    ['rev18-bars-section', 'rev18-bars-content', 'rev18-bars-toggle', 1],
+    ['rev18-scatter-section', 'rev18-scatter-content', 'rev18-scatter-toggle', 2]
+  ]) {
+    const section = el(sectionId), content = el(contentId), toggle = el(toggleId);
+    toggle.addEventListener('click', () => {
+      const collapse = toggle.getAttribute('aria-expanded') === 'true';
+      content.hidden = collapse;
+      section.classList.toggle('is-collapsed', collapse);
+      toggle.setAttribute('aria-expanded', String(!collapse));
+      toggle.setAttribute('aria-label', `${collapse ? 'Expandir' : 'Minimizar'} Gráfico ${number}`);
+      toggle.textContent = collapse ? 'Expandir' : 'Minimizar';
+      reportSize();
+      if (!collapse) requestAnimationFrame(() => {
+        if (number === 1) chart(getPool().chartPool);
+        else renderScatter();
+        reportSize();
+      });
+    });
+  }
   new ResizeObserver(reportSize).observe(root);
   reportSize();
 })();

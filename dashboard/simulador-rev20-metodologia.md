@@ -2,6 +2,8 @@
 
 Esta seção do Dashboard apresenta um **cenário condicionado à chuva informada pelo visitante**. O programa não prevê a chuva. Foi preparado a partir da análise REV20 do estudo hoje organizado como **Artigo 2 — chuva de estações, vulnerabilidade e danos** (antigo Artigo 03). Não altera os modelos de associação nem as tabelas dos 19 cenários do artigo.
 
+O botão **Minimizar/Expandir** recolhe o Gráfico 3 para liberar espaço na tela. Ao expandi-lo, o cenário selecionado continua disponível; recolher a seção não muda as estimativas.
+
 ## O que aparece
 
 - **Chance de registro:** probabilidade estimada de ao menos um protocolo do Atlas naquele município-dia. Modelo logístico com chuva acumulada de 1 dia, SoVI, ICM e mês.
