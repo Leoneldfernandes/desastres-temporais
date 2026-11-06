@@ -4,11 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Simulador exploratório REV20 | Desastres Temporais</title>
-  <link rel="stylesheet" href="analogos.css?v=10">
-  <link rel="stylesheet" href="simulador-rev20.css?v=1">
-  <link rel="stylesheet" href="simulador-site.css?v=1">
-  <script defer src="simulador-rev20.js?v=1"></script>
+  <title>Chuva e danos | Simulador exploratório REV20</title>
+  <link rel="stylesheet" href="simulador-rev20.css?v=2">
+  <link rel="stylesheet" href="simulador-site.css?v=2">
+  <script defer src="simulador-rev20.js?v=2"></script>
   <script>
     const syncTheme = () => {
       try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
@@ -20,32 +19,20 @@
   </script>
 </head>
 <body>
-<div id="tres-janelas-rev20">
-
-  <h1>Chuva diária e acumulada</h1>
-  <div class="selectors viz-controls">
-    <label class="field form-label" for="tj-city">Município<select class="form-select" id="tj-city"></select></label>
-    <label class="field form-label" for="tj-month">Mês<select class="form-select" id="tj-month"></select></label>
+<main class="wrap">
+  <header><div><p class="eyebrow">Santa Catarina · REV20 · 2017–2025</p><h1>Chuva, registros e danos humanos</h1><p class="intro">Experimente uma sequência de chuva e observe o que modelos exploratórios estimam para um município. Compare o cenário com dias registrados na base histórica.</p></div><span class="tag">Teste metodológico · dados de estações</span></header>
+  <div class="grid">
+    <section class="panel"><h2>1 · Escolha o município e o mês</h2><div class="controls"><div><label for="city">Município</label><select id="city"></select></div><div><label for="month">Mês do cenário</label><select id="month"></select></div></div><div id="citymeta" class="citymeta"></div><p class="mini" style="margin-top:12px">O SoVI é um escore numérico. A cor indica sua classe original por desvio-padrão; o ICM representa capacidade municipal.</p></section>
+    <section class="panel"><h2>2 · Informe a chuva</h2><p class="muted">Comece pela chuva de hoje. Se choveu em dias anteriores, ajuste cada dia. As somas de 1, 3 e 6 dias são calculadas automaticamente.</p><div id="rainrows"></div><div id="rainsummary" class="rain-summary"></div></section>
   </div>
-  <h2>Chuva em cada dia</h2>
-  <div class="rain-editor" id="tj-rain-editor"></div>
-  <p class="text-small text-muted">Os gráficos somam esses dias. Arraste um ponto: 1 dia muda hoje; 3 dias redistribui ontem e anteontem; 6 dias redistribui os três dias anteriores.</p>
-  <div class="chart-section"><div class="chart-head"><h2>1 dia · registro</h2><strong id="tj-label-reg" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-reg" role="img" aria-label="Arraste o ponto para alterar a chuva de um dia e a chance de registro"></div></div>
-  <div class="chart-section"><div class="chart-head"><h2>3 dias · danos humanos médios</h2><strong id="tj-label-count" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-count" role="img" aria-label="Arraste o ponto para alterar a chuva de três dias e a quantidade média de danos humanos"></div></div>
-  <div class="chart-section"><div class="chart-head"><h2>6 dias · presença de dano humano</h2><strong id="tj-label-pres" class="tabular-nums">—</strong></div><div class="chart-area cursor-interaction" id="tj-chart-pres" role="img" aria-label="Arraste o ponto para alterar a chuva de seis dias e a chance de dano humano"></div></div>
-  <div class="viz-grid" aria-live="polite">
-    <div class="card viz-stat"><div class="text-small text-muted">Chance de registro</div><div class="viz-stat-value tabular-nums" id="tj-reg">—</div><div class="text-small text-muted">Ao menos um protocolo</div></div>
-    <div class="card viz-stat"><div class="text-small text-muted">Chance de dano humano se registrado</div><div class="viz-stat-value tabular-nums" id="tj-pres">—</div><div class="text-small text-muted">Dano humano informado maior que zero</div></div>
-    <div class="card viz-stat"><div class="text-small text-muted">Danos humanos médios se registrado</div><div class="viz-stat-value tabular-nums" id="tj-count">—</div><div class="text-small text-muted">Inclui dias com zero dano humano</div></div>
+  <section class="panel"><h2>3 · O que os modelos estimam?</h2><div class="cards"><article class="card"><div class="label">Chance de registro naquele dia</div><div class="big" id="p-reg">—</div><div class="bar"><i id="b-reg"></i></div><div class="desc">Probabilidade de existir ao menos um protocolo no município naquele dia.</div></article><article class="card"><div class="label">Chance de dano, se houver registro</div><div class="big" id="p-dam">—</div><div class="bar"><i id="b-dam"></i></div><div class="desc" id="joint">—</div></article><article class="card"><div class="label">Média estimada de danos informados, se houver registro</div><div class="big" id="n-dam">—</div><div class="desc">Inclui dias registrados com zero dano. É uma média, não um número certo nem contagem de pessoas únicas.</div></article></div><div id="range-warning" class="note warn" hidden></div><div class="note">Cada pergunta usa uma janela distinta: registro, chuva de hoje; presença de dano, chuva de 6 dias; contagem, chuva de 3 dias. Os modelos foram ajustados com 2017–2023 e conferidos em 2024–2025. No teste, a contagem ainda superestimou o total observado em 34%. Use o valor de danos como exploração, especialmente sob chuva extrema.</div></section>
+  <div class="twocol">
+    <section class="panel"><h2>Como a chuva de hoje muda as estimativas</h2><p class="muted">Mantendo município, mês e chuva dos dias anteriores fixos.</p><svg class="plot" id="plot" viewBox="0 0 620 245" role="img" aria-label="Curvas exploratórias de registro e dano conforme a chuva de hoje"></svg><div class="legend"><span><i class="dot" style="background:#087d7a"></i>Chance de registro</span><span><i class="dot" style="background:#d9922b"></i>Chance de dano se registrado</span></div></section>
+    <section class="panel"><h2>Contexto histórico local</h2><div id="local-context"></div><p class="mini" style="margin-top:13px">A frequência bruta é apenas descrição de dias medidos com chuva parecida em 1 dia; não substitui a probabilidade ajustada acima.</p></section>
   </div>
-  <h2>Registros históricos mais semelhantes</h2>
-  <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Data e tipologia</th><th>Chuva observada 1 / 3 / 6 dias</th><th>Danos humanos informados</th></tr></thead><tbody id="tj-history"></tbody></table></div>
-  <p id="tj-warning" class="text-small text-destructive" hidden></p>
-  <p class="mini-note text-small">Para redistribuir 3 ou 6 dias, a proporção já informada entre os dias é preservada; se todos eram zero, o novo volume é dividido igualmente. Piloto REV20: associação com protocolos informados; a contagem de danos humanos ainda é incerta e não serve para alerta operacional.</p>
-  <p class="mini-note text-small">Fontes: Atlas Digital/MIDR; chuva EPAGRI/Ciram com INMET complementar; SoVI sistematizado por Júlia Boelter Nickel; ICM/MIDR. Amostra e tratamentos: REV20 do artigo.</p>
-
-
-</div>
+  <section class="panel"><div class="rowhead"><div><h2>Episódios registrados no município</h2><p class="muted" id="history-intro"></p></div><div class="toggle"><button id="sort-near" class="active" type="button">Chuva parecida</button><button id="sort-recent" type="button">Mais recentes</button></div></div><div class="scroll"><table><thead><tr><th>Data</th><th>Tipologia</th><th class="num">Chuva 1 / 3 / 6 dias</th><th class="num">Danos informados</th><th>Comparação</th></tr></thead><tbody id="history"></tbody></table></div></section>
+  <footer class="footerline">Fonte: elaboração exploratória com a amostra REV20 do Atlas Digital de Desastres no Brasil, chuva EPAGRI/Ciram complementada por INMET íntegro, índices sistematizados por Júlia Boelter Nickel e ICM. Só os 128 municípios com dados da amostra aparecem. “Registro” significa protocolo informado, não todos os desastres que possam ter ocorrido. As associações e as comparações retrospectivas não demonstram causalidade nem servem como alerta operacional.</footer>
+</main>
 <script>
   const reportSize = () => {
     try {

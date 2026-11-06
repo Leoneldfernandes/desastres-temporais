@@ -1,8 +1,10 @@
-"""Import the approved REV20 visualization fragment as reviewable site assets.
+"""Import the original REV20 simulator layout into the test Dashboard.
 
-Usage: python scripts/import_rev20_simulator.py PATH_TO_SOURCE_FRAGMENT.html
-The source is produced by the Article 2 REV20 workflow; this script does not
-fit models or alter its coefficients or observations.
+Usage: python scripts/import_rev20_simulator.py SOURCE.html
+
+SOURCE.html is Simulador_chuva_municipio_REV20.html from the Article 2 REV20
+audit folder. The approved JSON is checked against the existing site data;
+this script changes presentation only and does not reestimate models.
 """
 
 import json
@@ -23,33 +25,39 @@ def main() -> None:
         raise SystemExit("Usage: python scripts/import_rev20_simulator.py SOURCE.html")
     source = Path(sys.argv[1]).read_text(encoding="utf-8")
     css = one(r"<style>\s*(.*?)\s*</style>", source, "style block")
-    data = one(r'<script id="tj-data" type="application/json">(.*?)</script>', source, "data block")
+    data = one(r'<script id="dataset" type="application/json">(.*?)</script>', source, "data block")
     script = one(r"<script>\s*(.*?)\s*</script>", source, "interaction script")
+    markup = one(r'(<main class="wrap">.*?</main>)', source, "simulator markup")
+
+    site = Path(__file__).resolve().parent.parent
+    target = site / "dashboard"
     parsed = json.loads(data.group(1))
-    if len(parsed["municipios"]) != 128 or len(parsed["eventos"]) != 1054:
-        raise ValueError("REV20 sample size differs from the approved candidate")
-    markup = source
-    for match in sorted((css, data, script), key=lambda match: match.start(), reverse=True):
-        markup = markup[: match.start()] + markup[match.end() :]
-    markup = markup.strip()
-    markup = re.sub(r"(?m)^[ \t]+$", "", markup)
-    if not markup.startswith('<div id="tres-janelas-rev20">') or not markup.endswith("</div>"):
-        raise ValueError("Unexpected visualization markup")
+    approved = json.loads((target / "simulador-rev20-data.json").read_text(encoding="utf-8"))
+    if parsed != approved or len(parsed["municipios"]) != 128 or len(parsed["eventos"]) != 1054:
+        raise ValueError("REV20 data differ from the approved site JSON")
+    if not any(city["id"] == "4205407" for city in parsed["municipios"]):
+        raise ValueError("Florianópolis is absent from the approved sample")
 
     js = script.group(1).strip()
-    original = "const data = JSON.parse(q('tj-data').textContent);"
-    replacement = """let data;
-  try {
-    const response = await fetch('simulador-rev20-data.json?v=1');
-    if (!response.ok) throw new Error('Data request failed');
-    data = await response.json();
-  } catch (_) {
-    root.textContent = 'Não foi possível carregar os dados do simulador.';
-    return;
-  }"""
-    if js.count(original) != 1 or not js.startswith("(() => {"):
-        raise ValueError("Unexpected interaction script")
-    js = js.replace("(() => {", "(async () => {", 1).replace(original, replacement, 1)
+    original = "const data=JSON.parse(document.getElementById('dataset').textContent);"
+    replacement = """(async () => {
+let data;
+try {
+  const response = await fetch('simulador-rev20-data.json?v=1');
+  if (!response.ok) throw new Error('Data request failed');
+  data = await response.json();
+} catch (_) {
+  document.querySelector('main.wrap').textContent = 'Não foi possível carregar os dados do simulador.';
+  return;
+}"""
+    if js.count(original) != 1:
+        raise ValueError("Unexpected dataset initializer")
+    js = js.replace(original, replacement, 1)
+    old_default = "data.municipios.find(x=>x.nome.toLowerCase().includes('blumenau'))||data.municipios[0]"
+    if js.count(old_default) != 1:
+        raise ValueError("Unexpected default municipality")
+    js = js.replace(old_default, "data.municipios.find(x=>x.id==='4205407')||data.municipios[0]", 1)
+    js += "\n})();\n"
 
     page = """<!doctype html>
 <html lang="pt-BR">
@@ -57,11 +65,10 @@ def main() -> None:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Simulador exploratório REV20 | Desastres Temporais</title>
-  <link rel="stylesheet" href="analogos.css?v=10">
-  <link rel="stylesheet" href="simulador-rev20.css?v=1">
-  <link rel="stylesheet" href="simulador-site.css?v=1">
-  <script defer src="simulador-rev20.js?v=1"></script>
+  <title>Chuva e danos | Simulador exploratório REV20</title>
+  <link rel="stylesheet" href="simulador-rev20.css?v=2">
+  <link rel="stylesheet" href="simulador-site.css?v=2">
+  <script defer src="simulador-rev20.js?v=2"></script>
   <script>
     const syncTheme = () => {
       try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || 'dark'; }
@@ -73,7 +80,7 @@ def main() -> None:
   </script>
 </head>
 <body>
-""" + markup + """
+""" + markup.group(1) + """
 <script>
   const reportSize = () => {
     try {
@@ -88,12 +95,10 @@ def main() -> None:
 </html>
 """
 
-    target = Path(__file__).resolve().parent.parent / "dashboard"
     (target / "simulador-rev20.html").write_text(page, encoding="utf-8")
-    (target / "simulador-rev20.js").write_text(js + "\n", encoding="utf-8")
-    (target / "simulador-rev20-data.json").write_text(data.group(1).strip() + "\n", encoding="utf-8")
+    (target / "simulador-rev20.js").write_text(js, encoding="utf-8")
     (target / "simulador-rev20.css").write_text(css.group(1).strip() + "\n", encoding="utf-8")
-    print(f"Imported {len(parsed['municipios'])} municipalities and {len(parsed['eventos'])} historical days")
+    print(f"Imported original layout with {len(parsed['municipios'])} municipalities and {len(parsed['eventos'])} historical days")
 
 
 if __name__ == "__main__":
