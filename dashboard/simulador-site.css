@@ -1,0 +1,23 @@
+:root { --font-size-base: 16px; --viz-series-3: #61cc89; }
+:root[data-theme="light"] { --viz-series-3: #178a46; }
+#tres-janelas-rev20 { padding: 16px 20px 24px; }
+#tres-janelas-rev20 h1 { margin: 0 0 8px; font-size: 1.55rem; line-height: 1.3; }
+#tres-janelas-rev20 h2 { margin: 9px 0 5px; font-size: 1.13rem; font-weight: 650; }
+#tres-janelas-rev20 .chart-section { margin-top: 6px; }
+#tres-janelas-rev20 .chart-head strong { font-variant-numeric: tabular-nums; }
+#tres-janelas-rev20 .form-control {
+  width: 100%; min-height: 38px; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); color: var(--foreground); font: inherit;
+}
+#tres-janelas-rev20 .text-destructive { color: #ffb4a8; }
+:root[data-theme="light"] #tres-janelas-rev20 .text-destructive { color: #a52424; }
+#tres-janelas-rev20 .mini-note { margin: 5px 0; }
+#tres-janelas-rev20 .chart-area { cursor: grab; }
+#tres-janelas-rev20 .chart-area:active { cursor: grabbing; }
+@media (max-width: 620px) {
+  #tres-janelas-rev20 { padding: 12px 13px 18px; }
+  #tres-janelas-rev20 h1 { font-size: 1.35rem; }
+  #tres-janelas-rev20 .viz-grid { grid-template-columns: 1fr; }
+  #tres-janelas-rev20 .table { min-width: 540px; }
+}
